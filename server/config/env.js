@@ -1,17 +1,19 @@
-import dotenv from "dotenv"
+import dotenv from "dotenv";
 
-dotenv.config()
+dotenv.config();
 
-const required = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"]
+const required = ["MONGO_URI", "JWT_SECRET", "CLIENT_URL"];
 
 export const loadConfig = () => {
-  const missing = required.filter((name) => !process.env[name]?.trim())
+  const missing = required.filter((name) => !process.env[name]?.trim());
   if (missing.length > 0) {
-    throw new Error(`Missing required environment variables: ${missing.join(", ")}`)
+    throw new Error(
+      `Missing required environment variables: ${missing.join(", ")}`,
+    );
   }
 
   if (process.env.JWT_SECRET.length < 32) {
-    throw new Error("JWT_SECRET must be at least 32 characters long")
+    throw new Error("JWT_SECRET must be at least 32 characters long");
   }
 
   return {
@@ -24,5 +26,5 @@ export const loadConfig = () => {
     uploadDirectory: process.env.UPLOAD_DIR || "uploads/items",
     maxImageSizeMb: Number(process.env.MAX_IMAGE_SIZE_MB) || 5,
     maxItemImages: Number(process.env.MAX_ITEM_IMAGES) || 6,
-  }
-}
+  };
+};

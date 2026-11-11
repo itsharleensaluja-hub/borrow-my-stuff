@@ -4,7 +4,7 @@ export const bookingTransitions = {
   active: ["completed"],
   completed: [],
   cancelled: [],
-}
+};
 
 export const canTransitionBooking = (from, to) =>
-  bookingTransitions[from]?.includes(to) || false
+  bookingTransitions[from]?.includes(to) || false;

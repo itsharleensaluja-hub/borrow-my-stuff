@@ -1,211 +1,89 @@
 # Borrow My Stuff
 
-> A college-only marketplace for borrowing, lending, selling items and earning by helping fellow students.
+Borrow My Stuff is a MERN campus marketplace for sharing useful items and small tasks with a domain-restricted student community.
 
-## 🌐 Live Demo
-
-- **Frontend:** https://borrow-box-black.vercel.app
-- **Backend API:** https://borrowbox-api.onrender.com
-
-![Borrow My Stuff](https://img.shields.io/badge/Stack-MERN-yellow)
-![License](https://img.shields.io/badge/License-MIT-blue)
-![Status](https://img.shields.io/badge/Status-Active-green)
-
----
-
-## What is Borrow My Stuff?
-
-Borrow My Stuff is a full-stack web application built for college students living in hostels. It is a mini campus economy platform where students can:
-
-- 📦 **Borrow & Lend** — Rent items like calculators, guitars, laptops from fellow students
-- 🏷️ **Buy & Sell** — Sell old textbooks, gadgets, clothes directly to classmates
-- 🤝 **Ask for Help** — Post tasks like food delivery, assignment writing, quiz taking and earn money
-- 🔒 **College-only access** — Only students with a valid college email can sign up
-
----
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React.js + Tailwind CSS + Vite |
-| Backend | Node.js + Express.js |
-| Database | MongoDB Atlas + Mongoose |
-| Auth | JWT + bcryptjs |
-| Deployment | Vercel (frontend) + Render (backend) |
-
----
+[![CI](https://github.com/YOURUSERNAME/borrow-my-stuff/actions/workflows/ci.yml/badge.svg)](https://github.com/YOURUSERNAME/borrow-my-stuff/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
 
 ## Features
 
-- ✅ College email domain restriction (only your college can sign up)
-- ✅ JWT authentication with secure password hashing
-- ✅ Browse, filter and search listings by category and type
-- ✅ List items for rent or sale with custom rules and pricing
-- ✅ Slot-based booking system with availability tracking
-- ✅ Gig marketplace — post tasks, accept tasks, earn money
-- ✅ Personal dashboard with real-time listings, bookings and tasks
-- ✅ Fully responsive design with brand color palette
+- Browse, search, filter, and sort item listings.
+- Create borrow/rent or informational sale listings with up to six photos.
+- Request items through transactional booking workflows.
+- Owner booking management with explicit status transitions.
+- Post and accept campus help gigs.
+- HttpOnly cookie authentication, CSRF protection, security headers, and rate limiting.
+- Domain-restricted signup for approved college email domains.
 
----
+## Architecture
 
-## Project Structure
-```
-borrow-my-stuff/
-├── client/                 # React frontend
-│   ├── src/
-│   │   ├── api/            # API helper functions
-│   │   ├── context/        # Auth context
-│   │   ├── pages/          # All page components
-│   │   └── main.jsx
-│   └── package.json
-│
-└── server/                 # Node.js backend
-    ├── config/             # Database connection
-    ├── controllers/        # Route logic
-    ├── middleware/         # Auth middleware
-    ├── models/             # MongoDB schemas
-    ├── routes/             # API routes
-    └── index.js
+```text
+client/  React + Vite + Tailwind CSS
+server/  Express 5 + Mongoose + MongoDB
 ```
 
----
+The client communicates with the server through `client/src/api`. The server exposes REST endpoints under `/api` and Swagger documentation at `/api/docs`.
 
-## Getting Started
+## Local setup
 
-### Prerequisites
-- Node.js v18+
-- MongoDB Atlas account
-- Git
+Requirements: Node.js 20+, MongoDB replica set or MongoDB Atlas for booking transactions.
 
-### Installation
-
-1. Clone the repository
-```bash
+```powershell
 git clone https://github.com/YOURUSERNAME/borrow-my-stuff.git
 cd borrow-my-stuff
-```
-
-2. Install frontend dependencies
-```bash
-cd client
+cd server
 npm install
+Copy-Item .env.example .env
 ```
 
-3. Install backend dependencies
-```bash
-cd ../server
-npm install
-```
+Configure `server/.env`:
 
-4. Set up environment variables
-
-Create a `.env` file inside the `server/` folder:
-```
+```env
+NODE_ENV=development
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_secret_key
+MONGO_URI=mongodb://127.0.0.1:27017/borrowbox
+JWT_SECRET=replace-with-at-least-32-random-characters
 CLIENT_URL=http://localhost:5173
+COOKIE_SECURE=false
 UPLOAD_DIR=uploads/items
 MAX_IMAGE_SIZE_MB=5
 MAX_ITEM_IMAGES=6
 ```
 
-5. Run the development servers
+Start each app in a separate terminal:
 
-Frontend (in `client/` folder):
-```bash
+```powershell
+cd server
+npm run dev
+
+cd ..\client
+npm install
 npm run dev
 ```
 
-Backend (in `server/` folder):
-```bash
-npm run dev
-```
+Open `http://localhost:5173`. API health is available at `http://localhost:5000/health`.
 
-6. Open `http://localhost:5173` in your browser
+## Booking transaction design
 
----
+Booking creation atomically claims an available item and creates its booking in one Mongoose session transaction. Booking updates use optimistic status matching and the documented state machine. Deployments without replica-set or sharded transaction support return an explicit `503 TRANSACTIONS_UNAVAILABLE`; they never fall back to unsafe updates.
 
-## API Endpoints
+## Local image storage
 
-Interactive API documentation is available at `http://localhost:5000/api/docs` while the server is running.
+Uploaded JPEG, PNG, and WebP files are stored under `server/uploads/items` and referenced by permanent `/uploads/items/...` URLs. Local storage is suitable for development only; use persistent object storage before deploying multiple or ephemeral server instances.
 
-### Auth
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/auth/register | Register new user |
-| POST | /api/auth/login | Login user |
-| GET | /api/auth/me | Get current user |
+## Tests and CI
 
-### Items
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/items | Get all items |
-| GET | /api/items/:id | Get item by ID |
-| POST | /api/items | Create new item |
-| PUT | /api/items/:id | Update item |
-| DELETE | /api/items/:id | Delete item |
-| GET | /api/items/mine | Get my items |
-
-### Bookings
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | /api/bookings | Create booking |
-| GET | /api/bookings/mine | Get my bookings |
-| GET | /api/bookings/incoming | Get bookings for my items |
-| PUT | /api/bookings/:id | Update booking status |
-
-### Gigs
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /api/gigs | Get all open gigs |
-| POST | /api/gigs | Post a new gig |
-| PUT | /api/gigs/:id/accept | Accept a gig |
-| PUT | /api/gigs/:id/complete | Mark gig complete |
-| GET | /api/gigs/mine | Get my gigs |
-
-## Production decisions
-
-- Booking creation and status changes use MongoDB transactions. The server returns a clear `503` error when connected to a deployment that does not support transactions; it does not fall back to unsafe availability updates.
-- Browser authentication uses an HttpOnly access cookie with CSRF protection. Bearer tokens remain supported for API clients.
-- Sale listings are currently informational only. The non-functional Buy Now and payment flow is intentionally not simulated.
-- Chat and reviews are not advertised as working features until their persistence, authorization, and eligibility rules are implemented.
-- Role selection is persisted through the authenticated backend user record and is not trusted as a permission mechanism by itself.
-- Item photos are stored in the server's local `uploads/items` directory for localhost development. The API validates JPEG, PNG, and WebP files, limits each file to 5 MB and allows up to 6 images per item. Use persistent external storage before deploying multiple backend instances.
-
-## Testing
-
-```bash
+```powershell
 cd server
 npm test
 
-cd ../client
+cd ..\client
 npm run lint
 npm run build
 ```
 
-The transactional booking integration requires a MongoDB replica set or sharded deployment. Set up a dedicated test database before adding live integration tests; the included tests cover API shell behavior, numeric validation, and booking state transitions without modifying production data.
-
----
-
-## Color Palette
-
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Deep Yellow | `#F4B63E` | Primary brand color |
-| Soft Lavender | `#C9C4F5` | Secondary color |
-| Light Grey | `#F8F5F8` | Background |
-| Dark | `#1A1A1A` | Primary text |
-
----
-
-## Built With ❤️ by
-
-**Ishika** — Built as a real-world college campus marketplace project
-
----
+GitHub Actions runs server tests and client lint/build on pushes and pull requests.
 
 ## License
 
-This project is licensed under the MIT License.
+MIT. See [LICENSE](./LICENSE).

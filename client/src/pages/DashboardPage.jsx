@@ -1,21 +1,279 @@
-import { useCallback, useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { getMyItemsAPI } from "../api/items"
-import { getIncomingBookingsAPI, getMyBookingsAPI, updateBookingStatusAPI } from "../api/bookings"
-import { getMyGigsAPI } from "../api/gigs"
-import { useAuth } from "../context/useAuth"
-import SiteNav from "../components/SiteNav"
-import { EmptyState, ErrorMessage, LoadingRows } from "../components/PageStates"
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getMyItemsAPI } from "../api/items";
+import {
+  getIncomingBookingsAPI,
+  getMyBookingsAPI,
+  updateBookingStatusAPI,
+} from "../api/bookings";
+import { getMyGigsAPI } from "../api/gigs";
+import { useAuth } from "../context/useAuth";
+import SiteNav from "../components/SiteNav";
+import {
+  EmptyState,
+  ErrorMessage,
+  LoadingRows,
+} from "../components/PageStates";
 
-const statusClass = { pending: "status-pending", confirmed: "status-confirmed", active: "status-active", completed: "status-completed", cancelled: "status-cancelled", open: "status-open", "in-progress": "status-active" }
+const statusClass = {
+  pending: "status-pending",
+  confirmed: "status-confirmed",
+  active: "status-active",
+  completed: "status-completed",
+  cancelled: "status-cancelled",
+  open: "status-open",
+  "in-progress": "status-active",
+};
 function DashboardPage() {
-  const { user } = useAuth(); const navigate = useNavigate()
-  const [items, setItems] = useState([]); const [bookings, setBookings] = useState([]); const [incoming, setIncoming] = useState([]); const [gigs, setGigs] = useState({ posted: [], accepted: [] }); const [filter, setFilter] = useState("all"); const [loading, setLoading] = useState(true); const [error, setError] = useState("")
-  const fetchAll = useCallback(async () => { try { setLoading(true); setError(""); const [nextItems, nextBookings, nextGigs, nextIncoming] = await Promise.all([getMyItemsAPI(), getMyBookingsAPI(), getMyGigsAPI(), getIncomingBookingsAPI(filter)]); setItems(nextItems); setBookings(nextBookings); setGigs(nextGigs); setIncoming(nextIncoming) } catch (requestError) { setError(requestError.message) } finally { setLoading(false) } }, [filter])
-  useEffect(() => { if (!user) navigate("/"); else fetchAll() }, [fetchAll, navigate, user])
-  const transition = async (id, status) => { try { await updateBookingStatusAPI(id, status); fetchAll() } catch (requestError) { setError(requestError.message) } }
-  const tasks = [...(gigs.posted || []).map((item) => ({ ...item, relation: "Posted" })), ...(gigs.accepted || []).map((item) => ({ ...item, relation: "Accepted" }))]
-  return <div className="page-shell"><SiteNav /><main className="container-wide py-12 lg:py-16"><div className="flex flex-col justify-between gap-6 border-b border-[#17213d] pb-10 sm:flex-row sm:items-end"><div><p className="eyebrow">Your corner of campus</p><h1 className="font-display mt-4 text-6xl leading-none">Hello, {user?.name?.split(" ")[0] || "there"}.</h1><p className="mt-4 text-[#687087]">Keep track of what you’re sharing, borrowing, and doing.</p></div><button className="btn-quiet" onClick={() => navigate("/list-item")}>List something ↗</button></div>{error && <div className="mt-6"><ErrorMessage message={error} /></div>}{loading ? <div className="mt-10"><LoadingRows count={6} /></div> : <><div className="grid gap-px border border-[#17213d] bg-[#17213d] sm:grid-cols-3 mt-10"><div className="bg-[#d9ece7] p-5"><p className="eyebrow">Your listings</p><p className="font-display mt-8 text-5xl">{items.length}</p></div><div className="bg-[#fff0c8] p-5"><p className="eyebrow">Your bookings</p><p className="font-display mt-8 text-5xl">{bookings.length}</p></div><div className="bg-[#ece6dc] p-5"><p className="eyebrow">Your tasks</p><p className="font-display mt-8 text-5xl">{tasks.length}</p></div></div><div className="mt-14 grid gap-14 lg:grid-cols-[1fr_1.2fr]"><section><div className="flex items-end justify-between border-b border-[#17213d] pb-4"><div><p className="eyebrow">Incoming</p><h2 className="font-display mt-2 text-3xl">Booking requests</h2></div><select aria-label="Filter bookings" className="border-0 border-b hairline bg-transparent py-2 text-xs" value={filter} onChange={(e) => setFilter(e.target.value)}>{["all", "pending", "confirmed", "active", "completed", "cancelled"].map((value) => <option key={value}>{value}</option>)}</select></div>{incoming.length === 0 ? <EmptyState title="No requests here." body="When someone requests one of your items, it will appear here." /> : <div>{incoming.map((booking) => <div key={booking._id} className="border-b hairline py-5"><div className="flex justify-between gap-4"><div><h3 className="font-bold">{booking.item?.title}</h3><p className="mt-1 text-xs text-[#687087]">{booking.borrower?.name} / {booking.borrower?.hostel || "Campus"}</p><p className="mt-2 text-sm text-[#687087]">{new Date(booking.startDate).toLocaleDateString()} — {new Date(booking.endDate).toLocaleDateString()} · ₹{booking.totalPrice}</p></div><span className={`status-label ${statusClass[booking.status] || "status-pending"}`}>{booking.status}</span></div><div className="mt-4 flex gap-2">{booking.status === "pending" && <><button className="btn-primary" onClick={() => transition(booking._id, "confirmed")}>Accept</button><button className="btn-outline" onClick={() => transition(booking._id, "cancelled")}>Reject</button></>}{booking.status === "confirmed" && <button className="btn-primary" onClick={() => transition(booking._id, "active")}>Mark active</button>}{booking.status === "active" && <button className="btn-primary" onClick={() => transition(booking._id, "completed")}>Complete</button>}</div></div>)}</div>}</section><section><div className="flex items-end justify-between border-b border-[#17213d] pb-4"><div><p className="eyebrow">Your activity</p><h2 className="font-display mt-2 text-3xl">Recent exchanges</h2></div><button onClick={() => navigate("/listings")} className="font-mono text-xs uppercase text-[#175c58]">Browse ↗</button></div><div className="border-b hairline">{bookings.slice(0, 4).map((booking) => <div key={booking._id} className="flex justify-between gap-4 border-b hairline py-5"><div><h3 className="font-bold">{booking.item?.title || "Booking"}</h3><p className="mt-1 text-xs text-[#687087]">{booking.owner?.name} · ₹{booking.totalPrice}</p></div><span className={`status-label ${statusClass[booking.status] || "status-pending"}`}>{booking.status}</span></div>)}{items.slice(0, 3).map((item) => <div key={item._id} className="flex justify-between gap-4 border-b hairline py-5"><div><h3 className="font-bold">{item.title}</h3><p className="mt-1 text-xs text-[#687087]">₹{item.price} / {item.per}</p></div><span className="status-label status-available">listed</span></div>)}</div></section></div></>}</main></div>
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [incoming, setIncoming] = useState([]);
+  const [gigs, setGigs] = useState({ posted: [], accepted: [] });
+  const [filter, setFilter] = useState("all");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const fetchAll = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const [nextItems, nextBookings, nextGigs, nextIncoming] =
+        await Promise.all([
+          getMyItemsAPI(),
+          getMyBookingsAPI(),
+          getMyGigsAPI(),
+          getIncomingBookingsAPI(filter),
+        ]);
+      setItems(nextItems);
+      setBookings(nextBookings);
+      setGigs(nextGigs);
+      setIncoming(nextIncoming);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+  useEffect(() => {
+    if (!user) navigate("/");
+    else fetchAll();
+  }, [fetchAll, navigate, user]);
+  const transition = async (id, status) => {
+    try {
+      await updateBookingStatusAPI(id, status);
+      fetchAll();
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
+  const tasks = [
+    ...(gigs.posted || []).map((item) => ({ ...item, relation: "Posted" })),
+    ...(gigs.accepted || []).map((item) => ({ ...item, relation: "Accepted" })),
+  ];
+  return (
+    <div className="page-shell">
+      <SiteNav />
+      <main className="container-wide py-12 lg:py-16">
+        <div className="flex flex-col justify-between gap-6 border-b border-[#17213d] pb-10 sm:flex-row sm:items-end">
+          <div>
+            <p className="eyebrow">Your corner of campus</p>
+            <h1 className="font-display mt-4 text-6xl leading-none">
+              Hello, {user?.name?.split(" ")[0] || "there"}.
+            </h1>
+            <p className="mt-4 text-[#687087]">
+              Keep track of what you’re sharing, borrowing, and doing.
+            </p>
+          </div>
+          <button className="btn-quiet" onClick={() => navigate("/list-item")}>
+            List something ↗
+          </button>
+        </div>
+        {error && (
+          <div className="mt-6">
+            <ErrorMessage message={error} />
+          </div>
+        )}
+        {loading ? (
+          <div className="mt-10">
+            <LoadingRows count={6} />
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-px border border-[#17213d] bg-[#17213d] sm:grid-cols-3 mt-10">
+              <div className="bg-[#d9ece7] p-5">
+                <p className="eyebrow">Your listings</p>
+                <p className="font-display mt-8 text-5xl">{items.length}</p>
+              </div>
+              <div className="bg-[#fff0c8] p-5">
+                <p className="eyebrow">Your bookings</p>
+                <p className="font-display mt-8 text-5xl">{bookings.length}</p>
+              </div>
+              <div className="bg-[#ece6dc] p-5">
+                <p className="eyebrow">Your tasks</p>
+                <p className="font-display mt-8 text-5xl">{tasks.length}</p>
+              </div>
+            </div>
+            <div className="mt-14 grid gap-14 lg:grid-cols-[1fr_1.2fr]">
+              <section>
+                <div className="flex items-end justify-between border-b border-[#17213d] pb-4">
+                  <div>
+                    <p className="eyebrow">Incoming</p>
+                    <h2 className="font-display mt-2 text-3xl">
+                      Booking requests
+                    </h2>
+                  </div>
+                  <select
+                    aria-label="Filter bookings"
+                    className="border-0 border-b hairline bg-transparent py-2 text-xs"
+                    value={filter}
+                    onChange={(e) => setFilter(e.target.value)}
+                  >
+                    {[
+                      "all",
+                      "pending",
+                      "confirmed",
+                      "active",
+                      "completed",
+                      "cancelled",
+                    ].map((value) => (
+                      <option key={value}>{value}</option>
+                    ))}
+                  </select>
+                </div>
+                {incoming.length === 0 ? (
+                  <EmptyState
+                    title="No requests here."
+                    body="When someone requests one of your items, it will appear here."
+                  />
+                ) : (
+                  <div>
+                    {incoming.map((booking) => (
+                      <div key={booking._id} className="border-b hairline py-5">
+                        <div className="flex justify-between gap-4">
+                          <div>
+                            <h3 className="font-bold">{booking.item?.title}</h3>
+                            <p className="mt-1 text-xs text-[#687087]">
+                              {booking.borrower?.name} /{" "}
+                              {booking.borrower?.hostel || "Campus"}
+                            </p>
+                            <p className="mt-2 text-sm text-[#687087]">
+                              {new Date(booking.startDate).toLocaleDateString()}{" "}
+                              — {new Date(booking.endDate).toLocaleDateString()}{" "}
+                              · ₹{booking.totalPrice}
+                            </p>
+                          </div>
+                          <span
+                            className={`status-label ${statusClass[booking.status] || "status-pending"}`}
+                          >
+                            {booking.status}
+                          </span>
+                        </div>
+                        <div className="mt-4 flex gap-2">
+                          {booking.status === "pending" && (
+                            <>
+                              <button
+                                className="btn-primary"
+                                onClick={() =>
+                                  transition(booking._id, "confirmed")
+                                }
+                              >
+                                Accept
+                              </button>
+                              <button
+                                className="btn-outline"
+                                onClick={() =>
+                                  transition(booking._id, "cancelled")
+                                }
+                              >
+                                Reject
+                              </button>
+                            </>
+                          )}
+                          {booking.status === "confirmed" && (
+                            <button
+                              className="btn-primary"
+                              onClick={() => transition(booking._id, "active")}
+                            >
+                              Mark active
+                            </button>
+                          )}
+                          {booking.status === "active" && (
+                            <button
+                              className="btn-primary"
+                              onClick={() =>
+                                transition(booking._id, "completed")
+                              }
+                            >
+                              Complete
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+              <section>
+                <div className="flex items-end justify-between border-b border-[#17213d] pb-4">
+                  <div>
+                    <p className="eyebrow">Your activity</p>
+                    <h2 className="font-display mt-2 text-3xl">
+                      Recent exchanges
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => navigate("/listings")}
+                    className="font-mono text-xs uppercase text-[#175c58]"
+                  >
+                    Browse ↗
+                  </button>
+                </div>
+                <div className="border-b hairline">
+                  {bookings.slice(0, 4).map((booking) => (
+                    <div
+                      key={booking._id}
+                      className="flex justify-between gap-4 border-b hairline py-5"
+                    >
+                      <div>
+                        <h3 className="font-bold">
+                          {booking.item?.title || "Booking"}
+                        </h3>
+                        <p className="mt-1 text-xs text-[#687087]">
+                          {booking.owner?.name} · ₹{booking.totalPrice}
+                        </p>
+                      </div>
+                      <span
+                        className={`status-label ${statusClass[booking.status] || "status-pending"}`}
+                      >
+                        {booking.status}
+                      </span>
+                    </div>
+                  ))}
+                  {items.slice(0, 3).map((item) => (
+                    <div
+                      key={item._id}
+                      className="flex justify-between gap-4 border-b hairline py-5"
+                    >
+                      <div>
+                        <h3 className="font-bold">{item.title}</h3>
+                        <p className="mt-1 text-xs text-[#687087]">
+                          ₹{item.price} / {item.per}
+                        </p>
+                      </div>
+                      <span className="status-label status-available">
+                        listed
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          </>
+        )}
+      </main>
+    </div>
+  );
 }
 
-export default DashboardPage
+export default DashboardPage;

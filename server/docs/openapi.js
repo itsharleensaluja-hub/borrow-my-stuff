@@ -27,22 +27,37 @@ export const openapiDocument = {
     "/api/auth/register": {
       post: {
         summary: "Register a college user",
-        requestBody: { required: true, content: { "application/json": { schema: { type: "object" } } } },
-        responses: { 201: { description: "Registered" }, 400: { description: "Invalid input" } },
+        requestBody: {
+          required: true,
+          content: { "application/json": { schema: { type: "object" } } },
+        },
+        responses: {
+          201: { description: "Registered" },
+          400: { description: "Invalid input" },
+        },
       },
     },
     "/api/auth/login": {
       post: {
         summary: "Log in and set an HttpOnly access cookie",
-        responses: { 200: { description: "Authenticated" }, 401: { description: "Invalid credentials" } },
+        responses: {
+          200: { description: "Authenticated" },
+          401: { description: "Invalid credentials" },
+        },
       },
     },
     "/api/items": {
-      get: { summary: "List available items", responses: { 200: { description: "Items" } } },
+      get: {
+        summary: "List available items",
+        responses: { 200: { description: "Items" } },
+      },
       post: {
         summary: "Create an item",
         security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-        responses: { 201: { description: "Created" }, 401: { description: "Unauthorized" } },
+        responses: {
+          201: { description: "Created" },
+          401: { description: "Unauthorized" },
+        },
       },
     },
     "/api/bookings": {
@@ -60,20 +75,38 @@ export const openapiDocument = {
       get: {
         summary: "List bookings for the authenticated owner's items",
         security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-        parameters: [{ name: "status", in: "query", schema: { type: "string" } }],
-        responses: { 200: { description: "Bookings" }, 401: { description: "Unauthorized" } },
+        parameters: [
+          { name: "status", in: "query", schema: { type: "string" } },
+        ],
+        responses: {
+          200: { description: "Bookings" },
+          401: { description: "Unauthorized" },
+        },
       },
     },
     "/api/bookings/{id}": {
       put: {
         summary: "Perform an authorized booking state transition",
         security: [{ cookieAuth: [] }, { bearerAuth: [] }],
-        parameters: [{ name: "id", in: "path", required: true, schema: { type: "string" } }],
-        responses: { 200: { description: "Updated" }, 409: { description: "Invalid transition" } },
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string" },
+          },
+        ],
+        responses: {
+          200: { description: "Updated" },
+          409: { description: "Invalid transition" },
+        },
       },
     },
     "/api/gigs": {
-      get: { summary: "List open gigs", responses: { 200: { description: "Gigs" } } },
+      get: {
+        summary: "List open gigs",
+        responses: { 200: { description: "Gigs" } },
+      },
       post: {
         summary: "Create a gig",
         security: [{ cookieAuth: [] }, { bearerAuth: [] }],
@@ -81,4 +114,4 @@ export const openapiDocument = {
       },
     },
   },
-}
+};
