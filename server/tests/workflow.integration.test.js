@@ -69,6 +69,48 @@ describe("workflow integration", () => {
     });
     expect(loggedIn.status).toBe(200);
     expect(loggedIn.headers["set-cookie"]).toBeDefined();
+    const session = await request(app)
+      .get("/api/auth/me")
+      .set("Cookie", loggedIn.headers["set-cookie"]);
+    expect(session.status).toBe(200);
+    expect(session.body.email).toBe("student@vitap.ac.in");
+
+    const bpitRegistration = await request(app)
+      .post("/api/auth/register")
+      .send({
+        name: "BPIT Student",
+        email: "harleen59ita24@bpitindia.edu.in",
+        password: "password123",
+      });
+    expect(bpitRegistration.status).toBe(201);
+  });
+
+  it("allows public item reads without auth and protects item mutations with CSRF", async () => {
+    const publicResponse = await request(app).get("/api/items");
+    expect(publicResponse.status).toBe(200);
+
+    const user = await User.create({
+      name: "Item owner",
+      email: "item-owner-auth@vitap.ac.in",
+      password: "password123",
+    });
+    const login = await request(app)
+      .post("/api/auth/login")
+      .send({ email: user.email, password: "password123" });
+    const item = await Item.create({
+      title: "Protected item",
+      description: "Useful",
+      category: "Books",
+      type: "borrow",
+      price: 5,
+      owner: user._id,
+    });
+    const withoutCsrf = await request(app)
+      .put(`/api/items/${item._id}`)
+      .set("Cookie", login.headers["set-cookie"])
+      .send({ title: "Changed" });
+    expect(withoutCsrf.status).toBe(403);
+    expect(withoutCsrf.body.code).toBe("CSRF_FAILED");
   });
 
   it("rejects lookalike domains and reports duplicate accounts clearly", async () => {

@@ -17,11 +17,20 @@ import { uploadDirectory } from "./middleware/uploadMiddleware.js";
 
 export const createApp = (config = loadConfig()) => {
   const app = express();
+  const clientOrigins = (
+    config.clientUrls || [config.clientUrl]
+  ).map((origin) => origin.trim().replace(/\/+$/, ""));
+  app.locals.config = config;
   app.set("trust proxy", 1);
   app.use(helmet());
   app.use(
     cors({
-      origin: config.clientUrl,
+      origin: (origin, callback) => {
+        if (!origin || clientOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        return callback(null, false);
+      },
       credentials: true,
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }),

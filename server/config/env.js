@@ -16,15 +16,22 @@ export const loadConfig = () => {
     throw new Error("JWT_SECRET must be at least 32 characters long");
   }
 
+  const nodeEnv = process.env.NODE_ENV || "development";
+  const clientUrls = process.env.CLIENT_URL.split(",")
+    .map((url) => url.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+
   return {
     port: Number(process.env.PORT) || 5000,
     mongoUri: process.env.MONGO_URI,
     jwtSecret: process.env.JWT_SECRET,
-    clientUrl: process.env.CLIENT_URL,
-    nodeEnv: process.env.NODE_ENV || "development",
-    cookieSecure: process.env.COOKIE_SECURE === "true",
+    clientUrl: clientUrls[0],
+    clientUrls,
+    nodeEnv,
+    cookieSecure:
+      process.env.COOKIE_SECURE === "true" || nodeEnv === "production",
     collegeEmailDomains: (process.env.COLLEGE_EMAIL_DOMAINS ||
-      "vitapstudent.ac.in,vitap.ac.in")
+      "bpitindia.edu.in,vitapstudent.ac.in,vitap.ac.in")
       .split(",")
       .map((domain) => domain.trim().toLowerCase().replace(/^@/, ""))
       .filter(Boolean),

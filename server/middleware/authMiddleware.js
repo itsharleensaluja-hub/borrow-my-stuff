@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
+import { loadConfig } from "../config/env.js";
 
 const getToken = (req) => {
   if (req.cookies?.access_token) return req.cookies.access_token;
@@ -22,7 +23,8 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const config = req.app.locals.config || loadConfig();
+    const decoded = jwt.verify(token, config.jwtSecret);
     req.user = await User.findById(decoded.id).select("-password");
     if (!req.user) {
       return res
@@ -35,13 +37,16 @@ const protect = async (req, res, next) => {
     }
     req.authType = req.cookies?.access_token === token ? "cookie" : "bearer";
     return next();
-  } catch {
+  } catch (error) {
+    const expired = error instanceof jwt.TokenExpiredError;
     return res
       .status(401)
       .json({
         success: false,
-        code: "AUTH_INVALID",
-        message: "Authentication failed",
+        code: expired ? "AUTH_EXPIRED" : "AUTH_INVALID",
+        message: expired
+          ? "Your session has expired. Please sign in again."
+          : "Authentication failed",
       });
   }
 };

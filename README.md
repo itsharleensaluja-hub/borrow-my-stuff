@@ -201,9 +201,9 @@ The server validates `MONGO_URI`, `JWT_SECRET`, and `CLIENT_URL` before startup.
 | `PORT` | No | Express port | `5000` |
 | `MONGO_URI` | Yes | MongoDB connection string | `mongodb://127.0.0.1:27017/borrowbox` |
 | `JWT_SECRET` | Yes | JWT signing secret; minimum 32 characters | `replace-with-at-least-32-random-characters` |
-| `CLIENT_URL` | Yes | Allowed frontend origin for CORS | `http://localhost:5173` |
-| `COOKIE_SECURE` | No | Use Secure cookies; enable behind HTTPS | `false` |
-| `COLLEGE_EMAIL_DOMAINS` | No | Comma-separated approved email domains | `vitapstudent.ac.in,vitap.ac.in,edu.in` |
+| `CLIENT_URL` | Yes | Allowed frontend origin(s), comma-separated when needed; no trailing slash | `http://localhost:5173` |
+| `COOKIE_SECURE` | No | Use Secure cookies; production enables this automatically | `false` |
+| `COLLEGE_EMAIL_DOMAINS` | No | Comma-separated approved email domains | `bpitindia.edu.in,vitapstudent.ac.in,vitap.ac.in` |
 | `UPLOAD_DIR` | No | Local item upload directory | `uploads/items` |
 | `MAX_IMAGE_SIZE_MB` | No | Maximum size per image | `5` |
 | `MAX_ITEM_IMAGES` | No | Maximum images per item | `6` |

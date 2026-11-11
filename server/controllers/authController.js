@@ -5,27 +5,36 @@ import { loadConfig } from "../config/env.js";
 
 const config = loadConfig();
 
-const cookieOptions = () => ({
-  httpOnly: true,
-  secure: config.cookieSecure,
-  sameSite: config.cookieSecure ? "none" : "lax",
-  maxAge: 30 * 24 * 60 * 60 * 1000,
+const getRuntimeConfig = (req) => ({
+  ...config,
+  ...(req.app.locals.config || {}),
+  collegeEmailDomains:
+    req.app.locals.config?.collegeEmailDomains || config.collegeEmailDomains,
 });
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, config.jwtSecret, { expiresIn: "30d" });
+const cookieOptions = (runtimeConfig) => ({
+  httpOnly: true,
+  secure: runtimeConfig.cookieSecure,
+  sameSite: runtimeConfig.cookieSecure ? "none" : "lax",
+  maxAge: 30 * 24 * 60 * 60 * 1000,
+  path: "/",
+});
+
+const generateToken = (id, runtimeConfig) => {
+  return jwt.sign({ id }, runtimeConfig.jwtSecret, { expiresIn: "30d" });
 };
 
-const isCollegeEmail = (email) => {
+const isCollegeEmail = (email, runtimeConfig) => {
   const domain = email.toLowerCase().split("@").pop();
-  return config.collegeEmailDomains.some(
+  return runtimeConfig.collegeEmailDomains.some(
     (allowedDomain) =>
-      domain === allowedDomain || domain.endsWith(`.${allowedDomain}`),
+      domain === allowedDomain,
   );
 };
 
 export const registerUser = async (req, res, next) => {
   try {
+    const runtimeConfig = getRuntimeConfig(req);
     const { name, email, password, hostel } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
 
@@ -43,13 +52,13 @@ export const registerUser = async (req, res, next) => {
         });
     }
 
-    if (!isCollegeEmail(normalizedEmail)) {
+    if (!isCollegeEmail(normalizedEmail, runtimeConfig)) {
       return res
         .status(400)
         .json({
           success: false,
           code: "COLLEGE_EMAIL_REQUIRED",
-          message: `Use an approved college email domain: ${config.collegeEmailDomains.map((domain) => `@${domain}`).join(", ")}`,
+          message: `Use an approved college email domain: ${runtimeConfig.collegeEmailDomains.map((domain) => `@${domain}`).join(", ")}`,
         });
     }
 
@@ -71,8 +80,8 @@ export const registerUser = async (req, res, next) => {
       hostel,
     });
 
-    const token = generateToken(user._id);
-    res.cookie("access_token", token, cookieOptions());
+    const token = generateToken(user._id, runtimeConfig);
+    res.cookie("access_token", token, cookieOptions(runtimeConfig));
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -87,6 +96,7 @@ export const registerUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
   try {
+    const runtimeConfig = getRuntimeConfig(req);
     const { email, password } = req.body;
     const normalizedEmail = email?.trim().toLowerCase();
 
@@ -97,8 +107,8 @@ export const loginUser = async (req, res, next) => {
     const user = await User.findOne({ email: normalizedEmail });
 
     if (user && (await user.matchPassword(password))) {
-      const token = generateToken(user._id);
-      res.cookie("access_token", token, cookieOptions());
+      const token = generateToken(user._id, runtimeConfig);
+      res.cookie("access_token", token, cookieOptions(runtimeConfig));
       res.json({
         _id: user._id,
         name: user.name,
@@ -143,6 +153,6 @@ export const updateRoles = async (req, res, next) => {
 };
 
 export const logoutUser = async (req, res) => {
-  res.clearCookie("access_token", cookieOptions());
+  res.clearCookie("access_token", cookieOptions(getRuntimeConfig(req)));
   res.json({ message: "Logged out" });
 };
