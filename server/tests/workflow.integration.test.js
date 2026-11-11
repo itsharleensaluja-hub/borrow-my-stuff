@@ -138,6 +138,92 @@ describe("workflow integration", () => {
     expect(await mongoose.model("Booking").countDocuments({ item: item._id })).toBe(1);
   });
 
+  it("allows non-overlapping booking dates while rejecting overlaps", async () => {
+    const [owner, firstBorrower, secondBorrower] = await Promise.all([
+      User.create({
+        name: "Owner",
+        email: "owner-dates@vitap.ac.in",
+        password: "password123",
+      }),
+      User.create({
+        name: "First",
+        email: "first-dates@vitap.ac.in",
+        password: "password123",
+      }),
+      User.create({
+        name: "Second",
+        email: "second-dates@vitap.ac.in",
+        password: "password123",
+      }),
+    ]);
+    const item = await Item.create({
+      title: "Projector",
+      description: "Useful",
+      category: "Electronics",
+      type: "borrow",
+      price: 10,
+      owner: owner._id,
+    });
+    const authenticate = async (user) => {
+      const login = await request(app)
+        .post("/api/auth/login")
+        .send({ email: user.email, password: "password123" });
+      return {
+        cookie: login.headers["set-cookie"],
+        csrf: login.headers["set-cookie"]
+          .find((value) => value.startsWith("borrowbox_csrf="))
+          ?.split("=")[1]
+          ?.split(";")[0] || "",
+      };
+    };
+    const [firstAuth, secondAuth] = await Promise.all([
+      authenticate(firstBorrower),
+      authenticate(secondBorrower),
+    ]);
+    const start = new Date();
+    start.setDate(start.getDate() + 2);
+    start.setHours(0, 0, 0, 0);
+    const firstEnd = new Date(start);
+    firstEnd.setDate(firstEnd.getDate() + 2);
+    const secondStart = new Date(firstEnd);
+    secondStart.setDate(secondStart.getDate() + 2);
+    const secondEnd = new Date(secondStart);
+    secondEnd.setDate(secondEnd.getDate() + 2);
+
+    const firstBooking = await request(app)
+      .post("/api/bookings")
+      .set("Cookie", firstAuth.cookie)
+      .set("X-CSRF-Token", firstAuth.csrf)
+      .send({
+        itemId: item._id,
+        startDate: start.toISOString(),
+        endDate: firstEnd.toISOString(),
+      });
+    const secondBooking = await request(app)
+      .post("/api/bookings")
+      .set("Cookie", secondAuth.cookie)
+      .set("X-CSRF-Token", secondAuth.csrf)
+      .send({
+        itemId: item._id,
+        startDate: secondStart.toISOString(),
+        endDate: secondEnd.toISOString(),
+      });
+    expect(firstBooking.status).toBe(201);
+    expect(secondBooking.status).toBe(201);
+
+    const overlap = await request(app)
+      .post("/api/bookings")
+      .set("Cookie", secondAuth.cookie)
+      .set("X-CSRF-Token", secondAuth.csrf)
+      .send({
+        itemId: item._id,
+        startDate: start.toISOString(),
+        endDate: firstEnd.toISOString(),
+      });
+    expect(overlap.status).toBe(409);
+    expect(overlap.body.code).toBe("BOOKING_DATE_CONFLICT");
+  });
+
   it("allows only one user to accept an open gig and enforces ownership", async () => {
     const [poster, first, second] = await Promise.all([
       User.create({

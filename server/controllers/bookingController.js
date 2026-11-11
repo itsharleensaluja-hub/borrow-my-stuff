@@ -48,9 +48,14 @@ export const createBooking = async (req, res, next) => {
 
     session.startTransaction();
     const item = await Item.findOneAndUpdate(
-      { _id: itemId, available: true, type: "borrow" },
-      { $set: { available: false } },
-      { new: true, session },
+      {
+        _id: itemId,
+        available: true,
+        type: "borrow",
+        owner: { $ne: req.user._id },
+      },
+      { $inc: { bookingVersion: 1 } },
+      { returnDocument: "after", session },
     );
     if (!item) {
       throw new AppError(
@@ -59,11 +64,18 @@ export const createBooking = async (req, res, next) => {
         "ITEM_UNAVAILABLE",
       );
     }
-    if (item.owner.toString() === req.user._id.toString()) {
+
+    const overlappingBooking = await Booking.exists({
+      item: item._id,
+      status: { $in: ["pending", "confirmed", "active"] },
+      startDate: { $lt: end },
+      endDate: { $gt: start },
+    }).session(session);
+    if (overlappingBooking) {
       throw new AppError(
-        "You cannot book your own item",
-        403,
-        "OWNER_BOOKING_FORBIDDEN",
+        "Item is already booked for part of those dates",
+        409,
+        "BOOKING_DATE_CONFLICT",
       );
     }
 
@@ -180,13 +192,6 @@ export const updateBookingStatus = async (req, res, next) => {
         "Booking was updated by another request",
         409,
         "BOOKING_CONFLICT",
-      );
-    }
-    if (status === "cancelled" || status === "completed") {
-      await Item.findOneAndUpdate(
-        { _id: booking.item, owner: booking.owner },
-        { $set: { available: true } },
-        { session },
       );
     }
     await session.commitTransaction();

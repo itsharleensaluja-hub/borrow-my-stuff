@@ -31,6 +31,7 @@ const itemSchema = new mongoose.Schema(
     },
     hostel: { type: String, default: "" },
     available: { type: Boolean, default: true },
+    bookingVersion: { type: Number, default: 0, select: false },
     rules: [{ type: String }],
     images: [
       {
