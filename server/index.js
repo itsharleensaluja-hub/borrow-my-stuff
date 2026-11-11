@@ -32,6 +32,7 @@ export const createApp = (config = loadConfig()) => {
         return callback(null, false);
       },
       credentials: true,
+      exposedHeaders: ["X-CSRF-Token"],
       methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     }),
   );

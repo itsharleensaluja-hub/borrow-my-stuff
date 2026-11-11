@@ -22,6 +22,17 @@ describe("API shell", () => {
     );
   });
 
+  it("exposes a CSRF token for cross-origin browser clients", async () => {
+    const response = await request(createApp(config))
+      .get("/")
+      .set("Origin", "http://localhost:5173");
+    expect(response.status).toBe(200);
+    expect(response.headers["x-csrf-token"]).toBeTruthy();
+    expect(response.headers["access-control-expose-headers"]).toContain(
+      "X-CSRF-Token",
+    );
+  });
+
   it("does not emit a trailing slash in production CORS responses", async () => {
     const response = await request(
       createApp({

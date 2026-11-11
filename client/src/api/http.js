@@ -1,4 +1,7 @@
+let csrfToken = null;
+
 const getCsrfToken = () => {
+  if (csrfToken) return csrfToken;
   const token = document.cookie
     .split("; ")
     .find((cookie) => cookie.startsWith("borrowbox_csrf="));
@@ -25,6 +28,8 @@ export const request = async (path, options = {}) => {
     headers,
     credentials: "include",
   });
+  const responseToken = res.headers.get("X-CSRF-Token");
+  if (responseToken) csrfToken = responseToken;
   const text = await res.text();
   let data;
   try {

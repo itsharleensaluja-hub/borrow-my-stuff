@@ -7,14 +7,16 @@ const config = loadConfig();
 
 export const setCsrfCookie = (req, res, next) => {
   const runtimeConfig = req.app.locals.config || config;
+  const token = req.cookies[csrfCookie] || crypto.randomBytes(24).toString("hex");
   if (!req.cookies[csrfCookie]) {
-    res.cookie(csrfCookie, crypto.randomBytes(24).toString("hex"), {
+    res.cookie(csrfCookie, token, {
       httpOnly: false,
       sameSite: runtimeConfig.cookieSecure ? "none" : "lax",
       secure: runtimeConfig.cookieSecure,
       path: "/",
     });
   }
+  res.setHeader("X-CSRF-Token", token);
   next();
 };
 
