@@ -23,6 +23,11 @@ export const loadConfig = () => {
     clientUrl: process.env.CLIENT_URL,
     nodeEnv: process.env.NODE_ENV || "development",
     cookieSecure: process.env.COOKIE_SECURE === "true",
+    collegeEmailDomains: (process.env.COLLEGE_EMAIL_DOMAINS ||
+      "vitapstudent.ac.in,vitap.ac.in")
+      .split(",")
+      .map((domain) => domain.trim().toLowerCase().replace(/^@/, ""))
+      .filter(Boolean),
     uploadDirectory: process.env.UPLOAD_DIR || "uploads/items",
     maxImageSizeMb: Number(process.env.MAX_IMAGE_SIZE_MB) || 5,
     maxItemImages: Number(process.env.MAX_ITEM_IMAGES) || 6,

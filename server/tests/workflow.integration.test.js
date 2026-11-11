@@ -17,6 +17,7 @@ const config = {
   clientUrl: "http://localhost:5173",
   nodeEnv: "test",
   cookieSecure: false,
+  authRateLimit: 1000,
 };
 
 describe("workflow integration", () => {
@@ -68,6 +69,29 @@ describe("workflow integration", () => {
     });
     expect(loggedIn.status).toBe(200);
     expect(loggedIn.headers["set-cookie"]).toBeDefined();
+  });
+
+  it("rejects lookalike domains and reports duplicate accounts clearly", async () => {
+    const lookalike = await request(app).post("/api/auth/register").send({
+      name: "Lookalike",
+      email: "student@notvitap.ac.in",
+      password: "password123",
+    });
+    expect(lookalike.status).toBe(400);
+    expect(lookalike.body.code).toBe("COLLEGE_EMAIL_REQUIRED");
+
+    await request(app).post("/api/auth/register").send({
+      name: "Existing",
+      email: "existing@vitap.ac.in",
+      password: "password123",
+    });
+    const duplicate = await request(app).post("/api/auth/register").send({
+      name: "Existing Again",
+      email: " EXISTING@VITAP.AC.IN ",
+      password: "password123",
+    });
+    expect(duplicate.status).toBe(400);
+    expect(duplicate.body.code).toBe("USER_EXISTS");
   });
 
   it("rejects cookie-authenticated mutations without CSRF", async () => {

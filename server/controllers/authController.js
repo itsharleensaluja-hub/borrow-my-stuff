@@ -17,8 +17,11 @@ const generateToken = (id) => {
 };
 
 const isCollegeEmail = (email) => {
-  const allowedDomains = ["@vitapstudent.ac.in", "@vitap.ac.in"];
-  return allowedDomains.some((domain) => email.toLowerCase().endsWith(domain));
+  const domain = email.toLowerCase().split("@").pop();
+  return config.collegeEmailDomains.some(
+    (allowedDomain) =>
+      domain === allowedDomain || domain.endsWith(`.${allowedDomain}`),
+  );
 };
 
 export const registerUser = async (req, res, next) => {
@@ -33,20 +36,32 @@ export const registerUser = async (req, res, next) => {
     if (password.length < 6) {
       return res
         .status(400)
-        .json({ message: "Password must be at least 6 characters" });
+        .json({
+          success: false,
+          code: "WEAK_PASSWORD",
+          message: "Password must be at least 6 characters",
+        });
     }
 
     if (!isCollegeEmail(normalizedEmail)) {
       return res
         .status(400)
-        .json({ message: "Only college email addresses are allowed" });
+        .json({
+          success: false,
+          code: "COLLEGE_EMAIL_REQUIRED",
+          message: `Use an approved college email domain: ${config.collegeEmailDomains.map((domain) => `@${domain}`).join(", ")}`,
+        });
     }
 
     const userExists = await User.findOne({ email: normalizedEmail });
     if (userExists) {
       return res
         .status(400)
-        .json({ message: "User already exists with this email" });
+        .json({
+          success: false,
+          code: "USER_EXISTS",
+          message: "An account already exists for this email. Sign in instead.",
+        });
     }
 
     const user = await User.create({

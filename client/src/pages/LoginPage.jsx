@@ -127,7 +127,7 @@ function LoginPage() {
                 name="email"
                 type="email"
                 className="field-control"
-                placeholder="you@vitapstudent.ac.in"
+                placeholder="you@your-college-domain.ac.in"
                 value={form.email}
                 onChange={update}
                 required
