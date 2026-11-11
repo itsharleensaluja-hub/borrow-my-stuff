@@ -8,9 +8,17 @@ import AskHelpPage from "./pages/AskHelpPage";
 import DashboardPage from "./pages/DashboardPage";
 import ListItemPage from "./pages/ListItemPage";
 import { useAuth } from "./context/useAuth";
+import { LoadingRows } from "./components/PageStates";
 
 function ProtectedRoute({ children }) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  if (loading) {
+    return (
+      <main className="container-wide py-16">
+        <LoadingRows count={4} />
+      </main>
+    );
+  }
   return user ? children : <Navigate to="/" replace />;
 }
 

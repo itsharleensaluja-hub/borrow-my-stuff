@@ -41,10 +41,19 @@ const imageUpload = multer({
   },
 });
 
-export const uploadItemImages = imageUpload.array(
-  "images",
-  Number(process.env.MAX_ITEM_IMAGES) || 6,
-);
+export const uploadItemImages = (req, res, next) => {
+  imageUpload.array(
+    "images",
+    Number(process.env.MAX_ITEM_IMAGES) || 6,
+  )(req, res, async (error) => {
+    if (error && req.files?.length) {
+      await Promise.allSettled(
+        req.files.map((file) => fs.promises.rm(file.path, { force: true })),
+      );
+    }
+    next(error);
+  });
+};
 export const getUploadUrl = (filename) => `/uploads/items/${filename}`;
 export const removeUploadedFile = async (url) => {
   if (!url?.startsWith("/uploads/items/")) return;

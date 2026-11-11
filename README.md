@@ -262,7 +262,7 @@ Swagger UI is available at `/api/docs`. The primary REST endpoints are listed be
 
 | Method | Endpoint | Auth | Purpose |
 | --- | --- | --- | --- |
-| `GET` | `/api/items` | Public | List available items with `page`, `limit`, `search`, `category`, `type`, `sort`, and `all` filters |
+| `GET` | `/api/items` | Public | List available items with `page`, `limit`, `search`, `category`, `type`, `sort`, and `all` filters; add `meta=true` for pagination metadata |
 | `GET` | `/api/items/:id` | Public | Get item details |
 | `GET` | `/api/items/mine` | Protected | List the current user’s items |
 | `POST` | `/api/items` | Protected | Create an item; accepts multipart image uploads |
@@ -339,6 +339,10 @@ Non-overlapping bookings for the same item are allowed. Date ranges overlap when
 existing.startDate < requested.endDate
 AND existing.endDate > requested.startDate
 ```
+
+Date-only booking inputs represent full calendar days. Hourly-priced legacy
+items are calculated as 24 hours per selected calendar day because the current
+booking form does not collect times.
 
 Booking statuses follow this state machine:
 

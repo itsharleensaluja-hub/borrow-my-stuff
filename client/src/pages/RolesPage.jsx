@@ -37,16 +37,16 @@ const roles = [
 ];
 
 function RolesPage() {
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { user, login } = useAuth();
   const continueRole = async () => {
-    if (!selected) return;
+    if (selected.length === 0) return;
     try {
       setSaving(true);
-      const data = await updateRolesAPI([selected]);
+      const data = await updateRolesAPI(selected);
       login({ ...user, role: data.roles });
       navigate("/listings");
     } catch (requestError) {
@@ -72,8 +72,14 @@ function RolesPage() {
           {roles.map(([id, title, label, body, tone]) => (
             <button
               key={id}
-              onClick={() => setSelected(id)}
-              className={`min-h-52 p-6 text-left transition-transform hover:-translate-y-1 ${selected === id ? "bg-[#175c58] text-[#fffdf9]" : `${tone} text-[#17213d]`}`}
+              onClick={() =>
+                setSelected((current) =>
+                  current.includes(id)
+                    ? current.filter((role) => role !== id)
+                    : [...current, id],
+                )
+              }
+              className={`min-h-52 p-6 text-left transition-transform hover:-translate-y-1 ${selected.includes(id) ? "bg-[#175c58] text-[#fffdf9]" : `${tone} text-[#17213d]`}`}
             >
               <span className="font-mono text-xs uppercase opacity-70">
                 {label}
@@ -96,7 +102,7 @@ function RolesPage() {
           </p>
           <button
             className="btn-primary"
-            disabled={!selected || saving}
+            disabled={selected.length === 0 || saving}
             onClick={continueRole}
           >
             {saving ? "Saving..." : "Continue"} <span>↗</span>

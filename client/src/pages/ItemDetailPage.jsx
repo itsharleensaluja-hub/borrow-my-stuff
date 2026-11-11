@@ -37,7 +37,7 @@ function ItemDetailPage() {
     if (!user) return navigate("/");
     if (!dates.startDate || !dates.endDate)
       return setError("Choose both dates to continue.");
-    if (new Date(dates.startDate) > new Date(dates.endDate))
+    if (new Date(dates.startDate) >= new Date(dates.endDate))
       return setError("The end date must be after the start date.");
     try {
       setBooking(true);
@@ -196,7 +196,7 @@ function ItemDetailPage() {
                       <input
                         id="startDate"
                         type="date"
-                        min={today}
+                        min={dates.startDate || today}
                         className="field-control"
                         value={dates.startDate}
                         onChange={(e) =>

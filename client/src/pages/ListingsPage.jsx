@@ -86,6 +86,8 @@ function ListingsPage() {
   const [type, setType] = useState("All");
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("newest");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ pages: 1, total: 0 });
   const fetchItems = useCallback(
     async (signal) => {
       try {
@@ -96,17 +98,21 @@ function ListingsPage() {
             ...(category !== "All" && { category }),
             ...(type !== "All" && { type }),
             ...(search && { search }),
+            meta: "true",
+            page,
+            limit: 10,
           },
           { signal },
         );
-        setItems(data);
+        setItems(data.items);
+        setPagination(data.pagination);
       } catch (requestError) {
         if (requestError.name !== "AbortError") setError(requestError.message);
       } finally {
         if (!signal.aborted) setLoading(false);
       }
     },
-    [category, search, type],
+    [category, page, search, type],
   );
   useEffect(() => {
     const controller = new AbortController();
@@ -116,6 +122,9 @@ function ListingsPage() {
       controller.abort();
     };
   }, [fetchItems]);
+  useEffect(() => {
+    setPage(1);
+  }, [category, search, type]);
   const sortedItems = [...items].sort((a, b) =>
     sort === "price-low"
       ? a.price - b.price
@@ -194,7 +203,7 @@ function ListingsPage() {
               <p className="font-mono text-xs uppercase text-[#687087]">
                 {loading
                   ? "Loading"
-                  : `${items.length} result${items.length === 1 ? "" : "s"}`}
+                  : `${pagination.total} result${pagination.total === 1 ? "" : "s"}`}
               </p>
               <select
                 aria-label="Sort listings"
@@ -226,6 +235,29 @@ function ListingsPage() {
                 {sortedItems.map((item) => (
                   <ListingCard key={item._id} item={item} />
                 ))}
+                {pagination.pages > 1 && (
+                  <div className="mt-8 flex items-center justify-between border-t hairline pt-5">
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      disabled={page === 1}
+                      onClick={() => setPage((current) => current - 1)}
+                    >
+                      Previous
+                    </button>
+                    <span className="font-mono text-xs text-[#687087]">
+                      Page {page} of {pagination.pages}
+                    </span>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      disabled={page === pagination.pages}
+                      onClick={() => setPage((current) => current + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </section>

@@ -52,7 +52,7 @@ export const acceptGig = async (req, res, next) => {
     const gig = await Gig.findOneAndUpdate(
       { _id: req.params.id, status: "open", postedBy: { $ne: req.user._id } },
       { $set: { acceptedBy: req.user._id, status: "in-progress" } },
-      { new: true },
+      { returnDocument: "after" },
     );
     if (!gig)
       return res
@@ -70,12 +70,10 @@ export const acceptGig = async (req, res, next) => {
 
 export const completeGig = async (req, res, next) => {
   try {
-    const gig = await Gig.findOne({
-      _id: req.params.id,
-      status: "in-progress",
-    });
-    if (!gig) return res.status(404).json({ success: false, code: "GIG_NOT_FOUND", message: "Gig not found" });
-    if (gig.postedBy.toString() !== req.user._id.toString()) {
+    const existingGig = await Gig.findById(req.params.id);
+    if (!existingGig)
+      return res.status(404).json({ success: false, code: "GIG_NOT_FOUND", message: "Gig not found" });
+    if (existingGig.postedBy.toString() !== req.user._id.toString()) {
       return res
         .status(403)
         .json({
@@ -84,8 +82,21 @@ export const completeGig = async (req, res, next) => {
           message: "Only the poster can mark as complete",
         });
     }
-    gig.status = "completed";
-    await gig.save();
+    const gig = await Gig.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        postedBy: req.user._id,
+        status: "in-progress",
+      },
+      { $set: { status: "completed" } },
+      { returnDocument: "after" },
+    );
+    if (!gig)
+      return res.status(409).json({
+        success: false,
+        code: "GIG_CONFLICT",
+        message: "Gig was updated by another request",
+      });
     res.json(gig);
   } catch (error) {
     next(error);

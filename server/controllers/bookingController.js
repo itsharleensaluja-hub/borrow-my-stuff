@@ -20,7 +20,7 @@ const validateDateRange = (startDate, endDate) => {
   if (
     Number.isNaN(start.getTime()) ||
     Number.isNaN(end.getTime()) ||
-    start > end
+    start >= end
   ) {
     throw new AppError(
       "A valid date range is required",
@@ -80,7 +80,7 @@ export const createBooking = async (req, res, next) => {
     }
 
     const days = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
-    const hours = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60)));
+    const hours = days * 24;
     const totalPrice =
       item.per === "flat"
         ? item.price

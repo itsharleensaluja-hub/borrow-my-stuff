@@ -1,4 +1,5 @@
 import Item from "../models/Item.js";
+import Booking from "../models/Booking.js";
 import { positiveNumber } from "../middleware/validate.js";
 import {
   getUploadUrl,
@@ -34,12 +35,24 @@ export const getItems = async (req, res, next) => {
     let filter = req.query.all === "true" ? {} : { available: true };
     if (category && category !== "All") filter.category = category;
     if (type && type !== "All") filter.type = type;
-    if (search) filter.title = { $regex: escapeRegex(search), $options: "i" };
-    const items = await Item.find(filter)
-      .populate("owner", "name hostel")
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * limit)
-      .limit(limit);
+    if (search) {
+      const expression = { $regex: escapeRegex(search), $options: "i" };
+      filter.$or = [{ title: expression }, { description: expression }];
+    }
+    const [items, total] = await Promise.all([
+      Item.find(filter)
+        .populate("owner", "name hostel")
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Item.countDocuments(filter),
+    ]);
+    if (req.query.meta === "true") {
+      return res.json({
+        items,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+      });
+    }
     res.json(items);
   } catch (error) {
     next(error);
@@ -101,8 +114,12 @@ export const createItem = async (req, res, next) => {
 export const updateItem = async (req, res, next) => {
   try {
     const item = await Item.findById(req.params.id);
-    if (!item) return res.status(404).json({ success: false, code: "ITEM_NOT_FOUND", message: "Item not found" });
+    if (!item) {
+      await cleanupRequestFiles(req);
+      return res.status(404).json({ success: false, code: "ITEM_NOT_FOUND", message: "Item not found" });
+    }
     if (item.owner.toString() !== req.user._id.toString()) {
+      await cleanupRequestFiles(req);
       return res
         .status(403)
         .json({ success: false, code: "FORBIDDEN", message: "Not authorized" });
@@ -127,21 +144,39 @@ export const updateItem = async (req, res, next) => {
       updates.price = positiveNumber(updates.price, "price");
     if (typeof updates.rules === "string")
       updates.rules = parseRules(updates.rules);
-    if (req.files?.length) {
-      await Promise.all(
-        (item.images || []).map((image) => removeUploadedFile(image.url)),
-      );
-      updates.images = req.files.map((file) => ({
-        url: getUploadUrl(file.filename),
-        alt: updates.title || item.title,
-      }));
+    const replacementImages = req.files?.length
+      ? req.files.map((file) => ({
+          url: getUploadUrl(file.filename),
+          alt: updates.title || item.title,
+        }))
+      : null;
+    if (replacementImages) {
+      updates.images = replacementImages;
     }
-    const updated = await Item.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true,
-    });
+    let updated;
+    try {
+      updated = await Item.findByIdAndUpdate(req.params.id, updates, {
+        returnDocument: "after",
+        runValidators: true,
+      });
+    } catch (error) {
+      await cleanupRequestFiles(req);
+      throw error;
+    }
+    if (!updated) {
+      await cleanupRequestFiles(req);
+      return res.status(404).json({
+        success: false,
+        code: "ITEM_NOT_FOUND",
+        message: "Item not found",
+      });
+    }
+    if (replacementImages) {
+      await cleanupStoredFiles(item.images);
+    }
     res.json(updated);
   } catch (error) {
+    if (req.files?.length) await cleanupRequestFiles(req);
     next(error);
   }
 };
@@ -155,15 +190,40 @@ export const deleteItem = async (req, res, next) => {
         .status(403)
         .json({ success: false, code: "FORBIDDEN", message: "Not authorized" });
     }
-    await Promise.all(
-      (item.images || []).map((image) => removeUploadedFile(image.url)),
-    );
+    const activeBookingCount = await Booking.countDocuments({
+      item: item._id,
+      status: { $in: ["pending", "confirmed", "active"] },
+    });
+    if (activeBookingCount > 0) {
+      return res.status(409).json({
+        success: false,
+        code: "ITEM_HAS_ACTIVE_BOOKINGS",
+        message: "Items with active bookings cannot be deleted",
+      });
+    }
     await item.deleteOne();
+    await cleanupStoredFiles(item.images);
     res.json({ message: "Item deleted" });
   } catch (error) {
     next(error);
   }
 };
+
+const cleanupStoredFiles = async (images = []) => {
+  const results = await Promise.allSettled(
+    images.map((image) => removeUploadedFile(image.url)),
+  );
+  results
+    .filter((result) => result.status === "rejected")
+    .forEach((result) => console.error("Upload cleanup failed:", result.reason));
+};
+
+const cleanupRequestFiles = async (req) =>
+  cleanupStoredFiles(
+    (req.files || []).map((file) => ({
+      url: getUploadUrl(file.filename),
+    })),
+  );
 
 export const getMyItems = async (req, res, next) => {
   try {
