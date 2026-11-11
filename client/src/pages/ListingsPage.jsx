@@ -1,239 +1,48 @@
-import { useState, useEffect, useCallback } from "react"
-import { useNavigate } from "react-router-dom"
+import { useCallback, useEffect, useState } from "react"
+import { Link, useSearchParams } from "react-router-dom"
 import { getItemsAPI } from "../api/items"
+import SiteNav from "../components/SiteNav"
+import { EmptyState, ErrorMessage, LoadingRows } from "../components/PageStates"
 
 const categories = ["All", "Electronics", "Books", "Instruments", "Sports", "Food", "Clothes", "Other"]
 
-function ItemIcon({ icon, color }) {
-  const c = color === "#F4B63E" ? "#E2A72E" : "#8B85D4"
-  const size = 52
-  if (icon === "calc") return (
-    <svg width={size} height={size} viewBox="0 0 52 52" fill="none">
-      <rect x="8" y="4" width="36" height="44" rx="6" stroke={c} strokeWidth="2.5"/>
-      <rect x="14" y="10" width="24" height="10" rx="2" fill={c} opacity="0.3"/>
-      <rect x="14" y="28" width="8" height="8" rx="2" fill={c}/>
-      <rect x="22" y="28" width="8" height="8" rx="2" fill={c} opacity="0.5"/>
-      <rect x="30" y="28" width="8" height="8" rx="2" fill={c} opacity="0.3"/>
-    </svg>
-  )
-  return (
-    <svg width={size} height={size} viewBox="0 0 52 52" fill="none">
-      <rect x="8" y="6" width="28" height="40" rx="3" stroke={c} strokeWidth="2.5"/>
-      <rect x="8" y="6" width="6" height="40" rx="3" fill={c} opacity="0.4"/>
-      <line x1="18" y1="16" x2="30" y2="16" stroke={c} strokeWidth="2" strokeLinecap="round"/>
-      <line x1="18" y1="22" x2="30" y2="22" stroke={c} strokeWidth="2" strokeLinecap="round"/>
-    </svg>
-  )
-}
-
-function ListingCard({ item, onClick }) {
-  const isYellow = item._id?.charCodeAt(0) % 2 === 0
-  const bgLight = isYellow ? "#FFF8E8" : "#F0EFFD"
-
-  return (
-    <div onClick={() => onClick(item)}
-      className="bg-white rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg"
-      style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-
-      <div className="h-44 flex items-center justify-center relative" style={{ backgroundColor: bgLight }}>
-        <div className="w-24 h-24 rounded-full flex items-center justify-center"
-          style={{ backgroundColor: isYellow ? "#F4B63E20" : "#C9C4F520" }}>
-          <ItemIcon icon="calc" color={isYellow ? "#F4B63E" : "#C9C4F5"} />
-        </div>
-        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-lg text-xs font-semibold"
-          style={{
-            backgroundColor: item.type === "sell" ? "#F4B63E" : "#C9C4F5",
-            color: item.type === "sell" ? "white" : "#534AB7",
-          }}>
-          {item.type === "sell" ? "For Sale" : "For Rent"}
-        </div>
-        {!item.available && (
-          <div className="absolute inset-0 flex items-center justify-center"
-            style={{ backgroundColor: "rgba(255,255,255,0.75)" }}>
-            <div className="px-3 py-1 rounded-lg text-xs font-semibold text-gray-500"
-              style={{ backgroundColor: "white", border: "1px solid #E5E5E5" }}>
-              Unavailable
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="p-4">
-        <div className="flex items-start justify-between mb-1">
-          <h3 className="font-semibold text-gray-800 text-sm leading-tight flex-1 pr-2">{item.title}</h3>
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="#F4B63E">
-              <path d="M6 1l1.4 2.8 3.1.4-2.2 2.2.5 3.1L6 8l-2.8 1.5.5-3.1L1.5 4.2l3.1-.4z"/>
-            </svg>
-            <span className="text-xs text-gray-500 ml-0.5">{item.rating || "New"}</span>
-          </div>
-        </div>
-        <p className="text-xs text-gray-400 mb-4">
-          {item.owner?.hostel || "Hostel"} · {item.owner?.name || "Student"}
-        </p>
-        <div className="flex items-center justify-between">
-          <div>
-            <span className="text-xl font-bold text-gray-800">₹{item.price}</span>
-            <span className="text-xs text-gray-400 ml-1">
-              {item.per === "flat" ? "flat" : `/ ${item.per}`}
-            </span>
-          </div>
-          <button
-            onClick={(e) => e.stopPropagation()}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold transition-all"
-            style={{
-              backgroundColor: item.available ? "#F4B63E" : "#F0F0F0",
-              color: item.available ? "white" : "#A8A8A8",
-            }}>
-            {item.type === "sell" ? "View Details" : "Book Slot"}
-          </button>
-        </div>
-      </div>
+function ListingCard({ item }) {
+  const isAvailable = item.available
+  return <Link to={`/item/${item._id}`} className="group grid grid-cols-[96px_1fr] gap-4 border-b hairline py-5 transition-colors hover:bg-[#fffdf9] sm:grid-cols-[150px_1fr] sm:gap-6">
+    <div className="relative flex aspect-square items-end justify-between overflow-hidden border border-[#d8d5cf] bg-[#ece6dc] p-3">
+      {item.images?.[0]?.url && <img src={`${import.meta.env.VITE_API_URL || "http://localhost:5000"}${item.images[0].url}`} alt={item.images[0].alt || item.title} className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
+      <span className="font-mono text-xs text-[#687087]">{item.category?.slice(0, 3).toUpperCase()}</span>
+      <span className={`relative ml-auto h-3 w-3 rounded-full ${isAvailable ? "bg-[#175c58]" : "bg-[#a94d3c]"}`} title={isAvailable ? "Available" : "Unavailable"} />
     </div>
-  )
+    <div className="flex min-w-0 flex-col justify-between py-1">
+      <div><div className="flex flex-wrap items-start justify-between gap-3"><h2 className="font-display text-2xl leading-tight group-hover:text-[#175c58]">{item.title}</h2><span className="font-mono text-xs uppercase text-[#687087]">{item.type === "sell" ? "Sale" : "Borrow"}</span></div><p className="mt-2 line-clamp-2 text-sm leading-6 text-[#687087]">{item.description}</p></div>
+      <div className="mt-5 flex flex-wrap items-end justify-between gap-3"><p className="text-sm text-[#687087]">{item.owner?.name || "Student"} <span className="text-[#d8d5cf]">/</span> {item.owner?.hostel || "Campus"}</p><p className="font-display text-2xl">₹{item.price}<span className="ml-1 font-sans text-xs text-[#687087]">{item.per === "flat" ? "flat" : `/ ${item.per}`}</span></p></div>
+    </div>
+  </Link>
 }
 
 function ListingsPage() {
+  const [searchParams] = useSearchParams()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState("All")
-  const [activeType, setActiveType] = useState("All")
+  const [error, setError] = useState("")
+  const [category, setCategory] = useState(() => searchParams.get("category") || "All")
+  const [type, setType] = useState("All")
   const [search, setSearch] = useState("")
-  const navigate = useNavigate()
-
+  const [sort, setSort] = useState("newest")
   const fetchItems = useCallback(async () => {
-    try {
-      setLoading(true)
-      const filters = {}
-      if (activeCategory !== "All") filters.category = activeCategory
-      if (activeType !== "All") filters.type = activeType
-      if (search) filters.search = search
-      const data = await getItemsAPI(filters)
-      setItems(data)
-    } catch (error) {
-      console.error("Failed to fetch items:", error)
-    } finally {
-      setLoading(false)
-    }
-  }, [activeCategory, activeType, search])
+    try { setLoading(true); setError(""); const data = await getItemsAPI({ ...(category !== "All" && { category }), ...(type !== "All" && { type }), ...(search && { search }) }); setItems(data) } catch (requestError) { setError(requestError.message) } finally { setLoading(false) }
+  }, [category, search, type])
+  useEffect(() => { fetchItems() }, [fetchItems])
+  const sortedItems = [...items].sort((a, b) => sort === "price-low" ? a.price - b.price : sort === "price-high" ? b.price - a.price : 0)
 
-  useEffect(() => {
-    fetchItems()
-  }, [fetchItems])
-
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8F5F8" }}>
-
-      <nav className="flex items-center justify-between px-8 py-4 bg-white shadow-sm sticky top-0 z-50">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/home")}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#F4B63E" }}>
-            <span className="text-white font-bold text-sm">B</span>
-          </div>
-          <span className="font-bold text-gray-800 text-lg">BorrowBox</span>
-        </div>
-        <div className="flex-1 max-w-md mx-8">
-          <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#A8A8B4" strokeWidth="2">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <input type="text" placeholder="Search items..."
-              value={search} onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm outline-none"
-              style={{ borderColor: "#E5E5E5", backgroundColor: "#F8F5F8" }}
-              onFocus={(e) => e.target.style.borderColor = "#F4B63E"}
-              onBlur={(e) => e.target.style.borderColor = "#E5E5E5"} />
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <button onClick={() => navigate("/ask-help")}
-            className="text-sm px-4 py-2 rounded-xl font-medium border-2"
-            style={{ borderColor: "#C9C4F5", color: "#534AB7" }}>
-            Ask for Help
-          </button>
-          <button onClick={() => navigate("/list-item")}
-            className="text-sm px-4 py-2 rounded-xl text-white font-medium flex items-center gap-1.5"
-            style={{ backgroundColor: "#F4B63E" }}>
-            + List Item
-          </button>
-        </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto px-8 py-8">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-1">Browse Campus Listings</h1>
-          <p className="text-gray-400">Find anything you need from students in your college</p>
-        </div>
-
-        <div className="flex gap-2 mb-4">
-          {["All", "borrow", "sell"].map(type => (
-            <button key={type} onClick={() => setActiveType(type)}
-              className="px-4 py-2 rounded-xl text-sm font-medium transition-all"
-              style={{
-                backgroundColor: activeType === type ? "#F4B63E" : "white",
-                color: activeType === type ? "white" : "#6B6B6B",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-              }}>
-              {type === "All" ? "All Types" : type === "borrow" ? "For Rent" : "For Sale"}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-2 flex-wrap mb-8">
-          {categories.map(cat => (
-            <button key={cat} onClick={() => setActiveCategory(cat)}
-              className="px-4 py-1.5 rounded-full text-sm font-medium transition-all"
-              style={{
-                backgroundColor: activeCategory === cat ? "#1A1A1A" : "white",
-                color: activeCategory === cat ? "white" : "#6B6B6B",
-                boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-              }}>
-              {cat}
-            </button>
-          ))}
-        </div>
-
-        {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {[1,2,3,4].map(i => (
-              <div key={i} className="bg-white rounded-2xl h-72 animate-pulse"
-                style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-                <div className="h-44 rounded-t-2xl" style={{ backgroundColor: "#F0F0F0" }}></div>
-                <div className="p-4 space-y-2">
-                  <div className="h-3 rounded" style={{ backgroundColor: "#F0F0F0" }}></div>
-                  <div className="h-3 rounded w-2/3" style={{ backgroundColor: "#F0F0F0" }}></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : items.length > 0 ? (
-          <>
-            <p className="text-sm text-gray-400 mb-4">
-              Showing <span className="font-bold text-gray-700">{items.length}</span> items
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              {items.map(item => (
-                <ListingCard key={item._id} item={item}
-                  onClick={() => navigate(`/item/${item._id}`)} />
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-20">
-            <svg className="mx-auto mb-4" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#D1D1D1" strokeWidth="1.5">
-              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-            </svg>
-            <p className="text-gray-500 font-medium">No items found</p>
-            <p className="text-gray-400 text-sm mt-1">Be the first to list something!</p>
-            <button onClick={() => navigate("/list-item")}
-              className="mt-4 px-6 py-2.5 rounded-xl text-white font-medium text-sm"
-              style={{ backgroundColor: "#F4B63E" }}>
-              + List an Item
-            </button>
-          </div>
-        )}
-      </div>
+  return <div className="page-shell"><SiteNav /><main className="container-wide py-12 lg:py-16">
+    <div className="flex flex-col justify-between gap-8 border-b border-[#17213d] pb-10 lg:flex-row lg:items-end"><div><p className="eyebrow">Campus marketplace</p><h1 className="font-display mt-4 text-5xl sm:text-6xl">Find useful.</h1><p className="mt-4 max-w-lg text-sm leading-6 text-[#687087]">A practical list of things students are sharing nearby. Search by object, category, or what you need it for.</p></div><Link to="/list-item" className="btn-quiet self-start">List something <span>↗</span></Link></div>
+    <div className="grid gap-8 py-8 lg:grid-cols-[220px_1fr]">
+      <aside className="space-y-7"><div><label className="field-label" htmlFor="search">Search the list</label><input id="search" className="field-control" placeholder="calculator, guitar..." value={search} onChange={(e) => setSearch(e.target.value)} /></div><div><p className="field-label">Category</p><div className="flex flex-wrap gap-2 lg:block">{categories.map((value) => <button key={value} onClick={() => setCategory(value)} className={`mr-2 mb-2 border px-3 py-2 text-left text-xs ${category === value ? "border-[#17213d] bg-[#17213d] text-[#fffdf9]" : "border-[#d8d5cf] hover:border-[#175c58]"}`}>{value}</button>)}</div></div><div><label className="field-label" htmlFor="type">Looking for</label><select id="type" className="field-control" value={type} onChange={(e) => setType(e.target.value)}><option value="All">Anything</option><option value="borrow">To borrow</option><option value="sell">To buy</option></select></div></aside>
+      <section><div className="mb-3 flex flex-wrap items-center justify-between gap-3"><p className="font-mono text-xs uppercase text-[#687087]">{loading ? "Loading" : `${items.length} result${items.length === 1 ? "" : "s"}`}</p><select aria-label="Sort listings" className="border-0 border-b hairline bg-transparent py-2 text-xs outline-none" value={sort} onChange={(e) => setSort(e.target.value)}><option value="newest">Recently added</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></div>{error ? <ErrorMessage message={error} /> : loading ? <LoadingRows count={5} /> : sortedItems.length === 0 ? <EmptyState title="Nothing matches yet." body="Try a broader search or be the first student to list what you have." action={<Link to="/list-item" className="btn-primary mt-6">List an item</Link>} /> : <div>{sortedItems.map((item) => <ListingCard key={item._id} item={item} />)}</div>}</section>
     </div>
-  )
+  </main></div>
 }
 
 export default ListingsPage

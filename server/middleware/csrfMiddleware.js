@@ -7,7 +7,7 @@ export const setCsrfCookie = (req, res, next) => {
   if (!req.cookies[csrfCookie]) {
     res.cookie(csrfCookie, crypto.randomBytes(24).toString("hex"), {
       httpOnly: false,
-      sameSite: "lax",
+      sameSite: process.env.COOKIE_SECURE === "true" ? "none" : "lax",
       secure: process.env.COOKIE_SECURE === "true",
     })
   }

@@ -16,7 +16,7 @@ const getCsrfToken = () => {
 
 export const request = async (path, options = {}) => {
   const headers = new Headers(options.headers)
-  if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json")
+  if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) headers.set("Content-Type", "application/json")
   const token = getLegacyToken()
   if (token && !headers.has("Authorization")) headers.set("Authorization", `Bearer ${token}`)
   if (["POST", "PUT", "PATCH", "DELETE"].includes(options.method) && getCsrfToken()) {

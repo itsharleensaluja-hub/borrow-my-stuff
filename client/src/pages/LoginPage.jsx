@@ -2,152 +2,47 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { loginAPI, registerAPI } from "../api/auth"
 import { useAuth } from "../context/useAuth"
+import BrandMark from "../components/BrandMark"
+import { ErrorMessage } from "../components/PageStates"
 
 function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [name, setName] = useState("")
-  const [hostel, setHostel] = useState("")
+  const [form, setForm] = useState({ email: "", password: "", name: "", hostel: "" })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-
   const navigate = useNavigate()
   const { login } = useAuth()
+  const update = (event) => setForm({ ...form, [event.target.name]: event.target.value })
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
-
+  const handleSubmit = async (event) => {
+    event.preventDefault(); setError(""); setLoading(true)
     try {
-      let userData
-      if (isLogin) {
-        userData = await loginAPI(email, password)
-      } else {
-        userData = await registerAPI(name, email, password, hostel)
-      }
-      login(userData)
-      navigate("/home")
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+      const data = isLogin ? await loginAPI(form.email, form.password) : await registerAPI(form.name, form.email, form.password, form.hostel)
+      login(data); navigate("/home")
+    } catch (requestError) { setError(requestError.message) } finally { setLoading(false) }
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center"
-      style={{ backgroundColor: "#F8F5F8" }}>
-
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-md p-8">
-
-        {/* Logo + Title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-3"
-            style={{ backgroundColor: "#F4B63E" }}>
-            <span className="text-white text-2xl font-bold">B</span>
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">BorrowBox</h1>
-          <p className="text-sm text-gray-400 mt-1">Your college marketplace</p>
-        </div>
-
-        {/* Toggle */}
-        <div className="flex rounded-xl overflow-hidden mb-6 border"
-          style={{ borderColor: "#E5E5E5" }}>
-          <button onClick={() => { setIsLogin(true); setError("") }}
-            className="flex-1 py-2 text-sm font-medium transition-all"
-            style={{ backgroundColor: isLogin ? "#F4B63E" : "white", color: isLogin ? "white" : "#6B6B6B" }}>
-            Login
-          </button>
-          <button onClick={() => { setIsLogin(false); setError("") }}
-            className="flex-1 py-2 text-sm font-medium transition-all"
-            style={{ backgroundColor: !isLogin ? "#F4B63E" : "white", color: !isLogin ? "white" : "#6B6B6B" }}>
-            Sign Up
-          </button>
-        </div>
-
-        {/* Error message */}
-        {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: "#FFE8E8", color: "#C0392B" }}>
-            {error}
-          </div>
-        )}
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Full Name</label>
-              <input type="text" placeholder="Enter your full name"
-                value={name} onChange={(e) => setName(e.target.value)}
-                required
-                className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all"
-                style={{ borderColor: "#E5E5E5" }}
-                onFocus={(e) => e.target.style.borderColor = "#F4B63E"}
-                onBlur={(e) => e.target.style.borderColor = "#E5E5E5"} />
-            </div>
-          )}
-
-          {!isLogin && (
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Hostel / Block</label>
-              <input type="text" placeholder="e.g. Block A, Room 204"
-                value={hostel} onChange={(e) => setHostel(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all"
-                style={{ borderColor: "#E5E5E5" }}
-                onFocus={(e) => e.target.style.borderColor = "#F4B63E"}
-                onBlur={(e) => e.target.style.borderColor = "#E5E5E5"} />
-            </div>
-          )}
-
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">College Email</label>
-            <input type="email" placeholder="yourname@college.edu"
-              value={email} onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all"
-              style={{ borderColor: "#E5E5E5" }}
-              onFocus={(e) => e.target.style.borderColor = "#F4B63E"}
-              onBlur={(e) => e.target.style.borderColor = "#E5E5E5"} />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1">Password</label>
-            <input type="password" placeholder="Enter your password"
-              value={password} onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none transition-all"
-              style={{ borderColor: "#E5E5E5" }}
-              onFocus={(e) => e.target.style.borderColor = "#F4B63E"}
-              onBlur={(e) => e.target.style.borderColor = "#E5E5E5"} />
-          </div>
-
-          <p className="text-xs text-center px-2" style={{ color: "#A8A8B4" }}>
-            Only students with a valid college email can access BorrowBox
-          </p>
-
-          <button type="submit" disabled={loading}
-            className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-opacity hover:opacity-90"
-            style={{ backgroundColor: loading ? "#D1D1D1" : "#F4B63E" }}>
-            {loading ? "Please wait..." : isLogin ? "Login to BorrowBox" : "Create Account"}
-          </button>
-
+  return <div className="page-shell grid lg:grid-cols-[.9fr_1.1fr]">
+    <div className="hidden min-h-screen flex-col justify-between bg-[#175c58] p-10 text-[#fffdf9] lg:flex">
+      <BrandMark inverse />
+      <div><p className="eyebrow text-[#d9ece7]">A campus marketplace</p><h1 className="font-display mt-5 max-w-lg text-6xl leading-[.98]">The useful stuff is already nearby.</h1><p className="mt-6 max-w-md leading-7 text-[#d9ece7]">Borrow a little. Lend what you have. Make campus life lighter.</p></div>
+      <p className="font-mono text-xs text-[#d9ece7]">Private to your college community.</p>
+    </div>
+    <div className="flex min-h-screen flex-col">
+      <div className="flex items-center justify-between border-b hairline px-6 py-5 lg:px-12"><BrandMark /><span className="font-mono text-xs text-[#687087]">{isLogin ? "Welcome back" : "Join the exchange"}</span></div>
+      <div className="m-auto w-full max-w-md px-6 py-12 lg:px-0">
+        <p className="eyebrow">{isLogin ? "Sign in" : "Create account"}</p><h2 className="font-display mt-4 text-5xl">{isLogin ? "Good to see you." : "Make campus useful."}</h2><p className="mt-4 text-sm leading-6 text-[#687087]">{isLogin ? "Pick up where you left off." : "Use your college email to join Borrow My Stuff."}</p>
+        {error && <div className="mt-6"><ErrorMessage message={error} /></div>}
+        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
+          {!isLogin && <><div><label className="field-label" htmlFor="name">Full name</label><input id="name" name="name" className="field-control" value={form.name} onChange={update} required /></div><div><label className="field-label" htmlFor="hostel">Hostel / block <span className="font-normal text-[#687087]">(optional)</span></label><input id="hostel" name="hostel" className="field-control" value={form.hostel} onChange={update} /></div></>}
+          <div><label className="field-label" htmlFor="email">College email</label><input id="email" name="email" type="email" className="field-control" placeholder="you@vitapstudent.ac.in" value={form.email} onChange={update} required /></div>
+          <div><label className="field-label" htmlFor="password">Password</label><input id="password" name="password" type="password" minLength="6" className="field-control" value={form.password} onChange={update} required /></div>
+          <button className="btn-primary w-full" disabled={loading}>{loading ? "Please wait..." : isLogin ? "Enter Borrow My Stuff" : "Create my account"}</button>
         </form>
-
-        <p className="text-center text-xs mt-6" style={{ color: "#A8A8B4" }}>
-          {isLogin ? "Don't have an account? " : "Already have an account? "}
-          <button onClick={() => { setIsLogin(!isLogin); setError("") }}
-            className="font-medium" style={{ color: "#F4B63E" }}>
-            {isLogin ? "Sign Up" : "Login"}
-          </button>
-        </p>
-
+        <button className="mt-7 text-sm text-[#175c58] underline underline-offset-4" onClick={() => { setIsLogin(!isLogin); setError("") }}>{isLogin ? "New here? Create an account" : "Already have an account? Sign in"}</button>
       </div>
     </div>
-  )
+  </div>
 }
 
 export default LoginPage

@@ -55,7 +55,6 @@ export const completeGig = async (req, res, next) => {
       return res.status(401).json({ message: "Only the poster can mark as complete" })
     }
     gig.status = "completed"
-    gig.paymentStatus = "paid"
     await gig.save()
     res.json(gig)
   } catch (error) { next(error) }

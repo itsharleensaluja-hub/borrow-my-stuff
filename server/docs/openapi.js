@@ -1,7 +1,7 @@
 export const openapiDocument = {
   openapi: "3.0.3",
   info: {
-    title: "BorrowBox API",
+    title: "Borrow My Stuff API",
     version: "1.0.0",
     description: "API for the Borrow My Stuff peer-to-peer campus marketplace.",
   },

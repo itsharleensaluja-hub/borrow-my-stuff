@@ -123,8 +123,14 @@ export const updateBookingStatus = async (req, res, next) => {
     }
 
     session.startTransaction()
-    booking.status = status
-    await booking.save({ session })
+    const updatedBooking = await Booking.findOneAndUpdate(
+      { _id: booking._id, status: booking.status },
+      { $set: { status } },
+      { new: true, session }
+    )
+    if (!updatedBooking) {
+      throw new AppError("Booking was updated by another request", 409, "BOOKING_CONFLICT")
+    }
     if (status === "cancelled" || status === "completed") {
       await Item.findOneAndUpdate(
         { _id: booking.item, owner: booking.owner },
@@ -133,7 +139,7 @@ export const updateBookingStatus = async (req, res, next) => {
       )
     }
     await session.commitTransaction()
-    res.json(booking)
+    res.json(updatedBooking)
   } catch (error) {
     if (session.inTransaction()) await session.abortTransaction()
     if (isTransactionUnsupported(error)) {

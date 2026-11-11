@@ -19,6 +19,10 @@ const itemSchema = new mongoose.Schema({
   hostel: { type: String, default: "" },
   available: { type: Boolean, default: true },
   rules: [{ type: String }],
+  images: [{
+    url: { type: String, required: true },
+    alt: { type: String, default: "" },
+  }],
   rating: { type: Number, default: 0 },
   reviews: { type: Number, default: 0 },
 }, { timestamps: true })

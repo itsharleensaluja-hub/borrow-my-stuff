@@ -1,4 +1,5 @@
 import express from "express"
+import path from "node:path"
 import cors from "cors"
 import cookieParser from "cookie-parser"
 import helmet from "helmet"
@@ -23,6 +24,7 @@ export const createApp = (config = loadConfig()) => {
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   }))
   app.use(express.json({ limit: "100kb" }))
+  app.use("/uploads", express.static(path.resolve(process.env.UPLOAD_DIR || "uploads")))
   app.use(cookieParser())
   app.use(setCsrfCookie)
   app.use(requireCsrf)
@@ -37,12 +39,12 @@ export const createApp = (config = loadConfig()) => {
 
   app.use("/api/auth", sensitiveLimiter, authRoutes)
   app.use("/api/items", itemRoutes)
-  app.use("/api/bookings", bookingRoutes)
-  app.use("/api/gigs", gigRoutes)
+  app.use("/api/bookings", sensitiveLimiter, bookingRoutes)
+  app.use("/api/gigs", sensitiveLimiter, gigRoutes)
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiDocument))
 
   app.get("/", (req, res) => {
-    res.json({ message: "BorrowBox API is running!" })
+    res.json({ message: "Borrow My Stuff API is running!" })
   })
 
   app.use(notFound)

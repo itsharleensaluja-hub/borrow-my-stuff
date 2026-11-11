@@ -1,5 +1,18 @@
 import Item from "../models/Item.js"
 import { positiveNumber } from "../middleware/validate.js"
+import { getUploadUrl, removeUploadedFile } from "../middleware/uploadMiddleware.js"
+import { AppError } from "../middleware/errorMiddleware.js"
+
+const parseRules = (rules) => {
+  if (typeof rules !== "string") return rules
+  try {
+    const parsed = JSON.parse(rules || "[]")
+    if (!Array.isArray(parsed) || parsed.some((rule) => typeof rule !== "string")) throw new Error("Rules must be an array of text values")
+    return parsed
+  } catch {
+    throw new AppError("Rules must be a valid list", 400, "INVALID_RULES")
+  }
+}
 
 export const getItems = async (req, res, next) => {
   try {
@@ -28,14 +41,19 @@ export const createItem = async (req, res, next) => {
       return res.status(400).json({ message: "Please fill all required fields" })
     }
     const normalizedPrice = positiveNumber(price, "price")
+    const images = (req.files || []).map((file) => ({ url: getUploadUrl(file.filename), alt: title.trim() }))
     const item = await Item.create({
       title, description, category, type,
-      price: normalizedPrice, per, hostel, rules,
+      price: normalizedPrice, per, hostel, rules: parseRules(rules),
+      images,
       owner: req.user._id,
     })
     const populated = await item.populate("owner", "name hostel rating")
     res.status(201).json(populated)
-  } catch (error) { next(error) }
+  } catch (error) {
+    if (req.files?.length) await Promise.all(req.files.map((file) => removeUploadedFile(getUploadUrl(file.filename))))
+    next(error)
+  }
 }
 
 export const updateItem = async (req, res, next) => {
@@ -49,6 +67,12 @@ export const updateItem = async (req, res, next) => {
     const updates = Object.fromEntries(
       Object.entries(req.body).filter(([field]) => allowedFields.includes(field))
     )
+    if (updates.price !== undefined) updates.price = positiveNumber(updates.price, "price")
+    if (typeof updates.rules === "string") updates.rules = parseRules(updates.rules)
+    if (req.files?.length) {
+      await Promise.all((item.images || []).map((image) => removeUploadedFile(image.url)))
+      updates.images = req.files.map((file) => ({ url: getUploadUrl(file.filename), alt: updates.title || item.title }))
+    }
     const updated = await Item.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,
@@ -64,6 +88,7 @@ export const deleteItem = async (req, res, next) => {
     if (item.owner.toString() !== req.user._id.toString()) {
       return res.status(401).json({ message: "Not authorized" })
     }
+    await Promise.all((item.images || []).map((image) => removeUploadedFile(image.url)))
     await item.deleteOne()
     res.json({ message: "Item deleted" })
   } catch (error) { next(error) }

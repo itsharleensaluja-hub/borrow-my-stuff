@@ -1,181 +1,43 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { createItemAPI } from "../api/items"
+import SiteNav from "../components/SiteNav"
+import { ErrorMessage } from "../components/PageStates"
+
+const MAX_IMAGES = 6
+const MAX_SIZE = 5 * 1024 * 1024
+const acceptedTypes = ["image/jpeg", "image/png", "image/webp"]
 
 function ListItemPage() {
-  const navigate = useNavigate()
+  const [form, setForm] = useState({ title: "", description: "", category: "Electronics", type: "borrow", price: "", per: "day", hostel: "", rules: "" })
+  const [images, setImages] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [form, setForm] = useState({
-    title: "", description: "", category: "Electronics",
-    type: "borrow", price: "", per: "day", hostel: "", rules: "",
-  })
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value })
-  }
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
+  const navigate = useNavigate()
+  const update = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  useEffect(() => () => images.forEach((image) => URL.revokeObjectURL(image.preview)), [images])
+  const addImages = (event) => {
+    const selected = Array.from(event.target.files || [])
+    const invalid = selected.find((file) => !acceptedTypes.includes(file.type) || file.size > MAX_SIZE)
+    if (invalid) { setError("Use JPEG, PNG, or WebP images under 5 MB each."); event.target.value = ""; return }
+    if (images.length + selected.length > MAX_IMAGES) { setError(`You can upload up to ${MAX_IMAGES} images.`); event.target.value = ""; return }
     setError("")
-    setLoading(true)
+    setImages([...images, ...selected.map((file) => ({ file, preview: URL.createObjectURL(file) }))])
+    event.target.value = ""
+  }
+  const removeImage = (index) => { URL.revokeObjectURL(images[index].preview); setImages(images.filter((_, imageIndex) => imageIndex !== index)) }
+  const submit = async (e) => {
+    e.preventDefault(); setError("")
+    if (!Number.isFinite(Number(form.price)) || Number(form.price) <= 0) return setError("Enter a price greater than zero.")
     try {
-      const rulesArray = form.rules.split("\n").filter(r => r.trim() !== "")
-      await createItemAPI({ ...form, price: Number(form.price), rules: rulesArray })
-      navigate("/listings")
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+      setLoading(true)
+      const payload = new FormData()
+      Object.entries(form).forEach(([key, value]) => payload.append(key, key === "rules" ? JSON.stringify(value.split("\n").filter(Boolean)) : value))
+      images.forEach(({ file }) => payload.append("images", file))
+      await createItemAPI(payload); navigate("/listings")
+    } catch (requestError) { setError(requestError.message) } finally { setLoading(false) }
   }
-
-  const inputStyle = {
-    borderColor: "#E5E5E5",
-    backgroundColor: "white",
-  }
-
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: "#F8F5F8" }}>
-
-      <nav className="flex items-center justify-between px-8 py-4 bg-white shadow-sm">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/home")}>
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: "#F4B63E" }}>
-            <span className="text-white font-bold text-sm">B</span>
-          </div>
-          <span className="font-bold text-gray-800 text-lg">BorrowBox</span>
-        </div>
-        <button onClick={() => navigate("/listings")}
-          className="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7"/>
-          </svg>
-          Back to listings
-        </button>
-      </nav>
-
-      <div className="max-w-2xl mx-auto px-8 py-10">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">List an Item</h1>
-        <p className="text-gray-400 mb-8">Fill in the details and start earning</p>
-
-        {error && (
-          <div className="mb-6 px-4 py-3 rounded-xl text-sm font-medium"
-            style={{ backgroundColor: "#FFE8E8", color: "#C0392B" }}>
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-5">
-
-          <div className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-            <h2 className="font-bold text-gray-800">Basic Details</h2>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Item Title</label>
-              <input name="title" value={form.title} onChange={handleChange}
-                placeholder="e.g. Scientific Calculator, Guitar, Textbook"
-                required className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = "#F4B63E"}
-                onBlur={e => e.target.style.borderColor = "#E5E5E5"} />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Description</label>
-              <textarea name="description" value={form.description} onChange={handleChange}
-                placeholder="Describe the item — brand, condition, what's included..."
-                required rows={3}
-                className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none resize-none"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = "#F4B63E"}
-                onBlur={e => e.target.style.borderColor = "#E5E5E5"} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Category</label>
-                <select name="category" value={form.category} onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none bg-white"
-                  style={inputStyle}>
-                  {["Electronics", "Books", "Instruments", "Sports", "Food", "Clothes", "Other"].map(c => (
-                    <option key={c}>{c}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Listing Type</label>
-                <select name="type" value={form.type} onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none bg-white"
-                  style={inputStyle}>
-                  <option value="borrow">For Rent</option>
-                  <option value="sell">For Sale</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-            <h2 className="font-bold text-gray-800">Pricing & Location</h2>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Price (₹)</label>
-                <input name="price" value={form.price} onChange={handleChange}
-                  type="number" placeholder="0" required
-                  className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none"
-                  style={inputStyle}
-                  onFocus={e => e.target.style.borderColor = "#F4B63E"}
-                  onBlur={e => e.target.style.borderColor = "#E5E5E5"} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-1">Per</label>
-                <select name="per" value={form.per} onChange={handleChange}
-                  className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none bg-white"
-                  style={inputStyle}>
-                  <option value="day">Per Day</option>
-                  <option value="hour">Per Hour</option>
-                  <option value="flat">Flat Price</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Your Hostel / Block</label>
-              <input name="hostel" value={form.hostel} onChange={handleChange}
-                placeholder="e.g. Block A, Room 204"
-                className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = "#F4B63E"}
-                onBlur={e => e.target.style.borderColor = "#E5E5E5"} />
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: "0 2px 12px rgba(0,0,0,0.06)" }}>
-            <h2 className="font-bold text-gray-800">Rules (optional)</h2>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                One rule per line
-              </label>
-              <textarea name="rules" value={form.rules} onChange={handleChange}
-                placeholder={"Return in same condition\nNo liquid near it\nMax 3 days per booking"}
-                rows={4}
-                className="w-full px-4 py-2.5 rounded-xl border text-sm outline-none resize-none"
-                style={inputStyle}
-                onFocus={e => e.target.style.borderColor = "#F4B63E"}
-                onBlur={e => e.target.style.borderColor = "#E5E5E5"} />
-            </div>
-          </div>
-
-          <button type="submit" disabled={loading}
-            className="w-full py-4 rounded-xl text-white font-bold text-base transition-opacity hover:opacity-90"
-            style={{ backgroundColor: loading ? "#D1D1D1" : "#F4B63E" }}>
-            {loading ? "Listing your item..." : "List Item →"}
-          </button>
-
-        </form>
-      </div>
-    </div>
-  )
+  return <div className="page-shell"><SiteNav /><main className="container-wide py-12 lg:py-16"><div className="max-w-2xl"><p className="eyebrow">Put it to work</p><h1 className="font-display mt-4 text-6xl leading-none">List an item.</h1><p className="mt-5 text-[#687087]">Show people what you have. Clear photos make easy exchanges.</p></div><form onSubmit={submit} className="mt-10 max-w-4xl border-t border-[#17213d]">{error && <div className="mt-6"><ErrorMessage message={error} /></div>}<div className="grid gap-6 border-b hairline py-8 sm:grid-cols-2"><div className="sm:col-span-2"><label className="field-label" htmlFor="title">What are you sharing?</label><input id="title" name="title" className="field-control" placeholder="Scientific calculator, acoustic guitar..." value={form.title} onChange={update} required /></div><div className="sm:col-span-2"><label className="field-label" htmlFor="description">Describe it</label><textarea id="description" name="description" className="field-control min-h-28" placeholder="Condition, brand, what’s included..." value={form.description} onChange={update} required /></div><div><label className="field-label" htmlFor="category">Category</label><select id="category" name="category" className="field-control" value={form.category} onChange={update}>{["Electronics", "Books", "Instruments", "Sports", "Food", "Clothes", "Other"].map((item) => <option key={item}>{item}</option>)}</select></div><div><label className="field-label" htmlFor="type">Exchange type</label><select id="type" name="type" className="field-control" value={form.type} onChange={update}><option value="borrow">Borrow / rent</option><option value="sell">For sale (informational)</option></select></div></div><div className="border-b hairline py-8"><div className="flex items-end justify-between gap-4"><div><label className="field-label mb-1" htmlFor="images">Product photos</label><p className="text-xs text-[#687087]">JPEG, PNG or WebP · up to 5 MB each · {images.length}/{MAX_IMAGES}</p></div><label htmlFor="images" className="btn-outline cursor-pointer">Add photos</label><input id="images" type="file" accept="image/jpeg,image/png,image/webp" multiple className="sr-only" onChange={addImages} /></div>{images.length > 0 && <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">{images.map((image, index) => <div key={image.preview} className="group relative aspect-square overflow-hidden border border-[#d8d5cf] bg-[#ece6dc]"><img src={image.preview} alt={`Preview ${index + 1}`} className="h-full w-full object-cover" /><button type="button" onClick={() => removeImage(index)} className="absolute right-2 top-2 bg-[#17213d] px-2 py-1 text-xs text-[#fffdf9] opacity-0 transition-opacity group-hover:opacity-100">Remove</button></div>)}</div>}</div><div className="grid gap-6 border-b hairline py-8 sm:grid-cols-2"><div><label className="field-label" htmlFor="price">Price (₹)</label><input id="price" name="price" type="number" min="0.01" step="0.01" className="field-control" value={form.price} onChange={update} required /></div><div><label className="field-label" htmlFor="per">Price applies</label><select id="per" name="per" className="field-control" value={form.per} onChange={update}><option value="day">Per day</option><option value="hour">Per hour</option><option value="flat">Flat price</option></select></div><div><label className="field-label" htmlFor="hostel">Where can people find it?</label><input id="hostel" name="hostel" className="field-control" placeholder="Hostel / block" value={form.hostel} onChange={update} /></div><div><label className="field-label" htmlFor="rules">Rules <span className="font-normal text-[#687087]">(optional)</span></label><textarea id="rules" name="rules" className="field-control" placeholder="One rule per line" value={form.rules} onChange={update} /></div></div><div className="flex items-center justify-between gap-4 py-8"><p className="text-xs text-[#687087]">No payment is processed by Borrow My Stuff.</p><button className="btn-quiet" disabled={loading}>{loading ? "Publishing..." : "Publish listing ↗"}</button></div></form></main></div>
 }
 
 export default ListItemPage

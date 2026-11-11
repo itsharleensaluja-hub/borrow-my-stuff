@@ -1,4 +1,4 @@
-# BorrowBox 📦
+# Borrow My Stuff
 
 > A college-only marketplace for borrowing, lending, selling items and earning by helping fellow students.
 
@@ -7,15 +7,15 @@
 - **Frontend:** https://borrow-box-black.vercel.app
 - **Backend API:** https://borrowbox-api.onrender.com
 
-![BorrowBox](https://img.shields.io/badge/Stack-MERN-yellow)
+![Borrow My Stuff](https://img.shields.io/badge/Stack-MERN-yellow)
 ![License](https://img.shields.io/badge/License-MIT-blue)
 ![Status](https://img.shields.io/badge/Status-Active-green)
 
 ---
 
-## What is BorrowBox?
+## What is Borrow My Stuff?
 
-BorrowBox is a full-stack web application built for college students living in hostels. It is a mini campus economy platform where students can:
+Borrow My Stuff is a full-stack web application built for college students living in hostels. It is a mini campus economy platform where students can:
 
 - 📦 **Borrow & Lend** — Rent items like calculators, guitars, laptops from fellow students
 - 🏷️ **Buy & Sell** — Sell old textbooks, gadgets, clothes directly to classmates
@@ -51,7 +51,7 @@ BorrowBox is a full-stack web application built for college students living in h
 
 ## Project Structure
 ```
-BorrowBox/
+borrow-my-stuff/
 ├── client/                 # React frontend
 │   ├── src/
 │   │   ├── api/            # API helper functions
@@ -82,8 +82,8 @@ BorrowBox/
 
 1. Clone the repository
 ```bash
-git clone https://github.com/YOURUSERNAME/BorrowBox.git
-cd BorrowBox
+git clone https://github.com/YOURUSERNAME/borrow-my-stuff.git
+cd borrow-my-stuff
 ```
 
 2. Install frontend dependencies
@@ -106,6 +106,9 @@ PORT=5000
 MONGO_URI=your_mongodb_connection_string
 JWT_SECRET=your_secret_key
 CLIENT_URL=http://localhost:5173
+UPLOAD_DIR=uploads/items
+MAX_IMAGE_SIZE_MB=5
+MAX_ITEM_IMAGES=6
 ```
 
 5. Run the development servers
@@ -169,6 +172,7 @@ Interactive API documentation is available at `http://localhost:5000/api/docs` w
 - Sale listings are currently informational only. The non-functional Buy Now and payment flow is intentionally not simulated.
 - Chat and reviews are not advertised as working features until their persistence, authorization, and eligibility rules are implemented.
 - Role selection is persisted through the authenticated backend user record and is not trusted as a permission mechanism by itself.
+- Item photos are stored in the server's local `uploads/items` directory for localhost development. The API validates JPEG, PNG, and WebP files, limits each file to 5 MB and allows up to 6 images per item. Use persistent external storage before deploying multiple backend instances.
 
 ## Testing
 

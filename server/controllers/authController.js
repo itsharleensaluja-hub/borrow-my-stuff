@@ -5,7 +5,7 @@ import { AppError } from "../middleware/errorMiddleware.js"
 const cookieOptions = () => ({
   httpOnly: true,
   secure: process.env.COOKIE_SECURE === "true",
-  sameSite: "lax",
+  sameSite: process.env.COOKIE_SECURE === "true" ? "none" : "lax",
   maxAge: 30 * 24 * 60 * 60 * 1000,
 })
 
